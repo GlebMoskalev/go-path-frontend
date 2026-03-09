@@ -2,46 +2,99 @@
 @import './tailwind.css';
 @import './theme.css';
 
+/* ===== Go Path Design Tokens ===== */
+
 :root {
-  --go-bg: #0F111A;
-  --go-surface: #141824;
-  --go-surface-2: #1A2035;
-  --go-border: #1E2A3A;
-  --go-border-2: #253047;
-  --go-cyan: #00ADD8;
-  --go-cyan-hover: #00C4F5;
-  --go-amber: #F59E0B;
-  --go-green: #10B981;
-  --go-red: #EF4444;
-  --go-text: #F1F5F9;
-  --go-muted: #94A3B8;
-  --go-subtle: #64748B;
+  /* Light theme (default) */
+  --go-bg: #FFFFFF;
+  --go-surface: #F7F8FB;
+  --go-surface-2: #EEF0F6;
+  --go-border: #E0E3EB;
+  --go-border-2: #CDD1DC;
+  --go-cyan: #0091B5;
+  --go-cyan-hover: #007A99;
+  --go-cyan-muted: rgba(0, 145, 181, 0.08);
+  --go-amber: #D97706;
+  --go-green: #059669;
+  --go-green-muted: rgba(5, 150, 105, 0.08);
+  --go-red: #DC2626;
+  --go-text: #111827;
+  --go-text-secondary: #374151;
+  --go-muted: #6B7280;
+  --go-subtle: #9CA3AF;
+
+  --go-header-bg: rgba(255, 255, 255, 0.85);
+  --go-code-bg: #FAFBFE;
+  --go-code-header: #F0F2F7;
+  --go-code-border: #DFE2EA;
+  --go-code-text: #1E293B;
+  --go-code-muted: #8B95A5;
+  --go-code-line-num: #B4BBC8;
+
   font-family: 'Manrope', system-ui, sans-serif;
 
-  /* Override theme.css defaults to dark */
-  --background: #0F111A;
+  /* Bridge to shadcn tokens */
+  --background: #FFFFFF;
+  --foreground: #111827;
+  --card: #F7F8FB;
+  --card-foreground: #111827;
+  --border: #E0E3EB;
+  --muted-foreground: #6B7280;
+}
+
+.dark {
+  --go-bg: #0B0D14;
+  --go-surface: #12141E;
+  --go-surface-2: #181B28;
+  --go-border: #1E2236;
+  --go-border-2: #282D45;
+  --go-cyan: #00ADD8;
+  --go-cyan-hover: #33C4E8;
+  --go-cyan-muted: rgba(0, 173, 216, 0.1);
+  --go-amber: #F59E0B;
+  --go-green: #10B981;
+  --go-green-muted: rgba(16, 185, 129, 0.1);
+  --go-red: #EF4444;
+  --go-text: #F1F5F9;
+  --go-text-secondary: #CBD5E1;
+  --go-muted: #94A3B8;
+  --go-subtle: #64748B;
+
+  --go-header-bg: rgba(11, 13, 20, 0.85);
+  --go-code-bg: #0D1017;
+  --go-code-header: #151821;
+  --go-code-border: #1E2236;
+  --go-code-text: #E2E8F0;
+  --go-code-muted: #94A3B8;
+  --go-code-line-num: #2D3748;
+
+  --background: #0B0D14;
   --foreground: #F1F5F9;
-  --card: #141824;
+  --card: #12141E;
   --card-foreground: #F1F5F9;
-  --border: #1E2A3A;
+  --border: #1E2236;
   --muted-foreground: #94A3B8;
 }
+
+/* ===== Base ===== */
 
 body {
   background-color: var(--go-bg);
   color: var(--go-text);
   font-family: 'Manrope', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Grain texture overlay */
-body::before {
+/* Grain texture overlay (dark mode only, very subtle) */
+.dark body::before {
   content: '';
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  opacity: 0.025;
+  opacity: 0.02;
   pointer-events: none;
   z-index: 9999;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
@@ -70,14 +123,24 @@ code, pre, .code-font {
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
-/* Smooth transitions */
-* {
-  transition-property: color, background-color, border-color, opacity;
-  transition-duration: 150ms;
-  transition-timing-function: ease;
+/* Smooth color transitions for theme switching */
+*,
+*::before,
+*::after {
+  transition-property: color, background-color, border-color, outline-color, box-shadow, opacity;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Animations */
+/* Disable transition on theme toggle to prevent FOUC flash */
+html.no-transition *,
+html.no-transition *::before,
+html.no-transition *::after {
+  transition: none !important;
+}
+
+/* ===== Animations ===== */
+
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }

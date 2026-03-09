@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CheckCircle2, XCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 export interface TestResult {
   id: string;
@@ -14,17 +15,20 @@ interface TestResultsProps {
   isRunning?: boolean;
 }
 
-function TestResultItem({ result }: { result: TestResult }) {
+function TestResultItem({ result, index }: { result: TestResult; index: number }) {
   const [open, setOpen] = useState(!result.passed);
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, delay: index * 0.05 }}
       style={{
         border: '1px solid',
-        borderColor: result.passed ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)',
-        borderRadius: '8px',
+        borderColor: result.passed ? 'var(--go-green-muted)' : 'rgba(220, 38, 38, 0.15)',
+        borderRadius: '10px',
         overflow: 'hidden',
-        background: result.passed ? 'rgba(16,185,129,0.04)' : 'rgba(239,68,68,0.04)',
+        background: result.passed ? 'var(--go-green-muted)' : 'rgba(220, 38, 38, 0.04)',
       }}
     >
       <button
@@ -42,89 +46,92 @@ function TestResultItem({ result }: { result: TestResult }) {
         }}
       >
         {result.passed ? (
-          <CheckCircle2 size={16} style={{ color: '#10B981', flexShrink: 0 }} />
+          <CheckCircle2 size={16} style={{ color: 'var(--go-green)', flexShrink: 0 }} />
         ) : (
-          <XCircle size={16} style={{ color: '#EF4444', flexShrink: 0 }} />
+          <XCircle size={16} style={{ color: 'var(--go-red)', flexShrink: 0 }} />
         )}
-        <span style={{ flex: 1, fontSize: '13px', fontWeight: 500, color: '#E2E8F0' }}>
+        <span style={{ flex: 1, fontSize: '13px', fontWeight: 500, color: 'var(--go-text)' }}>
           {result.name}
         </span>
         {(result.output || result.expected) && (
           open
-            ? <ChevronDown size={14} style={{ color: '#94A3B8', flexShrink: 0 }} />
-            : <ChevronRight size={14} style={{ color: '#94A3B8', flexShrink: 0 }} />
+            ? <ChevronDown size={14} style={{ color: 'var(--go-subtle)', flexShrink: 0 }} />
+            : <ChevronRight size={14} style={{ color: 'var(--go-subtle)', flexShrink: 0 }} />
         )}
       </button>
 
-      {open && (result.output || result.expected) && (
-        <div
-          style={{
-            padding: '0 14px 12px',
-            borderTop: '1px solid',
-            borderColor: result.passed ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
-          }}
-        >
-          {result.output && (
-            <div style={{ marginTop: '10px' }}>
-              <div style={{ fontSize: '11px', color: '#94A3B8', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Вывод
-              </div>
-              <pre
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '12px',
-                  color: result.passed ? '#10B981' : '#EF4444',
-                  background: '#0D1117',
-                  padding: '8px 10px',
-                  borderRadius: '6px',
-                  margin: 0,
-                  overflow: 'auto',
-                }}
-              >
-                {result.output}
-              </pre>
+      <AnimatePresence>
+        {open && (result.output || result.expected) && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div
+              style={{
+                padding: '0 14px 12px',
+                borderTop: '1px solid var(--go-border)',
+              }}
+            >
+              {result.output && (
+                <div style={{ marginTop: '10px' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--go-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Вывод
+                  </div>
+                  <pre style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: '12px',
+                    color: result.passed ? 'var(--go-green)' : 'var(--go-red)',
+                    background: 'var(--go-code-bg)',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    margin: 0,
+                    overflow: 'auto',
+                  }}>
+                    {result.output}
+                  </pre>
+                </div>
+              )}
+              {result.expected && !result.passed && (
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--go-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Ожидалось
+                  </div>
+                  <pre style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: '12px',
+                    color: 'var(--go-code-muted)',
+                    background: 'var(--go-code-bg)',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    margin: 0,
+                  }}>
+                    {result.expected}
+                  </pre>
+                </div>
+              )}
             </div>
-          )}
-          {result.expected && !result.passed && (
-            <div style={{ marginTop: '8px' }}>
-              <div style={{ fontSize: '11px', color: '#94A3B8', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Ожидалось
-              </div>
-              <pre
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '12px',
-                  color: '#94A3B8',
-                  background: '#0D1117',
-                  padding: '8px 10px',
-                  borderRadius: '6px',
-                  margin: 0,
-                }}
-              >
-                {result.expected}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
 
 function SkeletonTestItem() {
   return (
-    <div
-      style={{
-        border: '1px solid #1E2A3A',
-        borderRadius: '8px',
-        padding: '10px 14px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-      }}
-    >
-      <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#1A2035', animation: 'pulse 1.5s ease-in-out infinite' }} />
-      <div style={{ flex: 1, height: '12px', borderRadius: '4px', background: '#1A2035', animation: 'pulse 1.5s ease-in-out infinite' }} />
+    <div style={{
+      border: '1px solid var(--go-border)',
+      borderRadius: '10px',
+      padding: '10px 14px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+    }}>
+      <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: 'var(--go-surface-2)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+      <div style={{ flex: 1, height: '12px', borderRadius: '4px', background: 'var(--go-surface-2)', animation: 'pulse 1.5s ease-in-out infinite' }} />
     </div>
   );
 }
@@ -133,17 +140,15 @@ export function TestResults({ results, isRunning = false }: TestResultsProps) {
   if (isRunning) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <div style={{ fontSize: '13px', color: '#94A3B8', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div
-            style={{
-              width: '14px',
-              height: '14px',
-              border: '2px solid #00ADD8',
-              borderTopColor: 'transparent',
-              borderRadius: '50%',
-              animation: 'spin 0.8s linear infinite',
-            }}
-          />
+        <div style={{ fontSize: '13px', color: 'var(--go-muted)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{
+            width: '14px',
+            height: '14px',
+            border: '2px solid var(--go-cyan)',
+            borderTopColor: 'transparent',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite',
+          }} />
           Запуск тестов...
         </div>
         <SkeletonTestItem />
@@ -155,14 +160,7 @@ export function TestResults({ results, isRunning = false }: TestResultsProps) {
 
   if (results.length === 0) {
     return (
-      <div
-        style={{
-          padding: '24px',
-          textAlign: 'center',
-          color: '#94A3B8',
-          fontSize: '14px',
-        }}
-      >
+      <div style={{ padding: '24px', textAlign: 'center', color: 'var(--go-muted)', fontSize: '14px' }}>
         Нажмите «Отправить решение», чтобы запустить тесты
       </div>
     );
@@ -173,29 +171,27 @@ export function TestResults({ results, isRunning = false }: TestResultsProps) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-      {/* Summary */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '8px 14px',
-          borderRadius: '8px',
-          background: allPassed ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
-          border: `1px solid ${allPassed ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`,
-          marginBottom: '2px',
-        }}
-      >
-        <span style={{ fontSize: '13px', fontWeight: 600, color: allPassed ? '#10B981' : '#EF4444' }}>
-          {allPassed ? '✓ Все тесты пройдены!' : `✗ Пройдено ${passed} из ${results.length}`}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '8px 14px',
+        borderRadius: '10px',
+        background: allPassed ? 'var(--go-green-muted)' : 'rgba(220, 38, 38, 0.06)',
+        border: '1px solid',
+        borderColor: allPassed ? 'rgba(5, 150, 105, 0.2)' : 'rgba(220, 38, 38, 0.15)',
+        marginBottom: '2px',
+      }}>
+        <span style={{ fontSize: '13px', fontWeight: 600, color: allPassed ? 'var(--go-green)' : 'var(--go-red)' }}>
+          {allPassed ? 'Все тесты пройдены!' : `Пройдено ${passed} из ${results.length}`}
         </span>
-        <span style={{ fontSize: '12px', color: '#94A3B8' }}>
+        <span style={{ fontSize: '12px', color: 'var(--go-muted)' }}>
           {passed}/{results.length}
         </span>
       </div>
 
-      {results.map((r) => (
-        <TestResultItem key={r.id} result={r} />
+      {results.map((r, idx) => (
+        <TestResultItem key={r.id} result={r} index={idx} />
       ))}
     </div>
   );

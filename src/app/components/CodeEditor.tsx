@@ -1,74 +1,8 @@
 import { useState, useRef, useCallback } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { Copy, Check, RotateCcw } from 'lucide-react';
-
-const goTheme: Record<string, React.CSSProperties> = {
-  'code[class*="language-"]': {
-    color: '#e2e8f0',
-    background: 'none',
-    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-    fontSize: '13.5px',
-    lineHeight: '1.65',
-    direction: 'ltr',
-    textAlign: 'left',
-    whiteSpace: 'pre',
-    wordSpacing: 'normal',
-    wordBreak: 'normal',
-    wordWrap: 'normal',
-    tabSize: 4,
-    hyphens: 'none',
-  },
-  'pre[class*="language-"]': {
-    color: '#e2e8f0',
-    background: 'transparent',
-    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-    fontSize: '13.5px',
-    lineHeight: '1.65',
-    direction: 'ltr',
-    textAlign: 'left',
-    whiteSpace: 'pre',
-    wordSpacing: 'normal',
-    wordBreak: 'normal',
-    wordWrap: 'normal',
-    tabSize: 4,
-    hyphens: 'none',
-    padding: '0',
-    margin: '0',
-    overflow: 'visible',
-    borderRadius: '0',
-  },
-  comment: { color: '#64748b', fontStyle: 'italic' },
-  prolog: { color: '#64748b' },
-  doctype: { color: '#64748b' },
-  cdata: { color: '#64748b' },
-  punctuation: { color: '#94a3b8' },
-  property: { color: '#00ADD8' },
-  tag: { color: '#00ADD8' },
-  boolean: { color: '#F59E0B' },
-  number: { color: '#F59E0B' },
-  constant: { color: '#F59E0B' },
-  symbol: { color: '#F59E0B' },
-  deleted: { color: '#EF4444' },
-  selector: { color: '#10B981' },
-  'attr-name': { color: '#10B981' },
-  string: { color: '#10B981' },
-  char: { color: '#10B981' },
-  builtin: { color: '#10B981' },
-  inserted: { color: '#10B981' },
-  operator: { color: '#94a3b8' },
-  entity: { color: '#F59E0B' },
-  url: { color: '#00ADD8' },
-  variable: { color: '#e2e8f0' },
-  atrule: { color: '#00ADD8' },
-  'attr-value': { color: '#10B981' },
-  function: { color: '#00ADD8' },
-  'class-name': { color: '#F59E0B' },
-  keyword: { color: '#c792ea' },
-  regex: { color: '#F59E0B' },
-  important: { color: '#F59E0B', fontWeight: 'bold' },
-  bold: { fontWeight: 'bold' },
-  italic: { fontStyle: 'italic' },
-};
+import { useTheme } from '../context/ThemeContext';
+import { editorDarkTheme, editorLightTheme } from './syntaxThemes';
 
 interface CodeEditorProps {
   value: string;
@@ -82,6 +16,8 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
   const [copied, setCopied] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editorWrapRef = useRef<HTMLDivElement>(null);
+  const { resolved } = useTheme();
+  const theme = resolved === 'dark' ? editorDarkTheme : editorLightTheme;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(value);
@@ -124,30 +60,28 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
     }
   }, []);
 
-  const lines = value.split('\n');
-  const lineCount = lines.length;
+  const lineCount = value.split('\n').length;
 
   return (
     <div
       style={{
-        background: '#0D1117',
-        border: '1px solid #1E2A3A',
-        borderRadius: '10px',
+        background: 'var(--go-code-bg)',
+        border: '1px solid var(--go-code-border)',
+        borderRadius: '12px',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
         height,
       }}
     >
-      {/* Header */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '8px 16px',
-          borderBottom: '1px solid #1E2A3A',
-          background: '#141824',
+          borderBottom: '1px solid var(--go-code-border)',
+          background: 'var(--go-code-header)',
           flexShrink: 0,
         }}
       >
@@ -155,7 +89,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
           <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#EF4444', opacity: 0.7 }} />
           <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#F59E0B', opacity: 0.7 }} />
           <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10B981', opacity: 0.7 }} />
-          <span style={{ marginLeft: '8px', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: '#94A3B8' }}>
+          <span style={{ marginLeft: '8px', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: 'var(--go-code-muted)' }}>
             main.go
           </span>
         </div>
@@ -165,9 +99,9 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
               onClick={handleReset}
               style={{
                 background: 'none',
-                border: '1px solid #253047',
-                borderRadius: '5px',
-                color: '#94A3B8',
+                border: '1px solid var(--go-code-border)',
+                borderRadius: '6px',
+                color: 'var(--go-code-muted)',
                 cursor: 'pointer',
                 padding: '3px 8px',
                 fontSize: '12px',
@@ -185,9 +119,9 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
             onClick={handleCopy}
             style={{
               background: 'none',
-              border: '1px solid #253047',
-              borderRadius: '5px',
-              color: copied ? '#10B981' : '#94A3B8',
+              border: '1px solid var(--go-code-border)',
+              borderRadius: '6px',
+              color: copied ? 'var(--go-green)' : 'var(--go-code-muted)',
               cursor: 'pointer',
               padding: '3px 8px',
               fontSize: '12px',
@@ -202,7 +136,6 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
         </div>
       </div>
 
-      {/* Editor area */}
       <div
         ref={editorWrapRef}
         style={{
@@ -212,7 +145,6 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
           position: 'relative',
         }}
       >
-        {/* Line numbers */}
         <div
           className="line-numbers"
           style={{
@@ -221,8 +153,8 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
             textAlign: 'right',
             paddingRight: '12px',
             paddingLeft: '8px',
-            background: '#0D1117',
-            borderRight: '1px solid #1A2035',
+            background: 'var(--go-code-bg)',
+            borderRight: '1px solid var(--go-code-border)',
             userSelect: 'none',
             flexShrink: 0,
             overflow: 'hidden',
@@ -235,7 +167,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
                 fontFamily: "'JetBrains Mono', monospace",
                 fontSize: '13.5px',
                 lineHeight: '1.65',
-                color: '#2d3748',
+                color: 'var(--go-code-line-num)',
               }}
             >
               {i + 1}
@@ -243,18 +175,13 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
           ))}
         </div>
 
-        {/* Code area with highlight overlay */}
         <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-          {/* Syntax-highlighted layer (behind textarea) */}
           <div
             className="highlight-layer"
             aria-hidden="true"
             style={{
               position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
+              top: 0, left: 0, right: 0, bottom: 0,
               padding: '16px',
               overflow: 'hidden',
               pointerEvents: 'none',
@@ -262,13 +189,10 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
           >
             <SyntaxHighlighter
               language={language}
-              style={goTheme as any}
+              style={theme as any}
               customStyle={{
-                margin: 0,
-                padding: 0,
-                background: 'transparent',
-                border: 'none',
-                overflow: 'visible',
+                margin: 0, padding: 0, background: 'transparent',
+                border: 'none', overflow: 'visible',
               }}
               codeTagProps={{
                 style: {
@@ -285,7 +209,6 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
             </SyntaxHighlighter>
           </div>
 
-          {/* Editable textarea (transparent text, visible caret) */}
           <textarea
             ref={textareaRef}
             value={value}
@@ -309,7 +232,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
               fontSize: '13.5px',
               lineHeight: '1.65',
               padding: '16px',
-              caretColor: '#00ADD8',
+              caretColor: 'var(--go-cyan)',
               whiteSpace: 'pre',
               overflowWrap: 'normal',
               wordBreak: 'normal',

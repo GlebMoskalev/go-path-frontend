@@ -3,7 +3,7 @@ import { Header } from './Header';
 
 export function Layout() {
   return (
-    <div style={{ minHeight: '100vh', background: '#0F111A' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--go-bg)' }}>
       <Header />
       <Outlet />
     </div>

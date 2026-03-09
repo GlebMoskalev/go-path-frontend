@@ -14,11 +14,11 @@ function parseInlineCode(text: string, keyPrefix: string): React.ReactNode[] {
         style={{
           fontFamily: "'JetBrains Mono', monospace",
           fontSize: '0.88em',
-          background: '#1A2035',
-          border: '1px solid #253047',
-          borderRadius: '4px',
+          background: 'var(--go-surface-2)',
+          border: '1px solid var(--go-border)',
+          borderRadius: '5px',
           padding: '1px 6px',
-          color: '#00ADD8',
+          color: 'var(--go-cyan)',
         }}
       >
         {part}
@@ -33,7 +33,7 @@ function parseBold(text: string): React.ReactNode[] {
   const parts = text.split(/\*\*([^*]+)\*\*/);
   return parts.flatMap((part, i) =>
     i % 2 === 1
-      ? [<strong key={`b${i}`} style={{ color: '#F1F5F9', fontWeight: 700 }}>{part}</strong>]
+      ? [<strong key={`b${i}`} style={{ color: 'var(--go-text)', fontWeight: 700 }}>{part}</strong>]
       : parseInlineCode(part, `${i}-`)
   );
 }
@@ -46,7 +46,6 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
   while (i < lines.length) {
     const line = lines[i];
 
-    // Code block
     if (line.trim().startsWith('```')) {
       const lang = line.trim().slice(3).trim() || 'go';
       const codeLines: string[] = [];
@@ -55,7 +54,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
         codeLines.push(lines[i]);
         i++;
       }
-      i++; // skip closing ```
+      i++;
       elements.push(
         <div key={`code-${i}`} style={{ margin: '20px 0' }}>
           <CodeBlock code={codeLines.join('\n')} language={lang} />
@@ -64,10 +63,9 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
       continue;
     }
 
-    // H1
     if (line.startsWith('# ')) {
       elements.push(
-        <h1 key={i} style={{ fontSize: '28px', fontWeight: 800, color: '#F1F5F9', marginTop: '8px', marginBottom: '16px', letterSpacing: '-0.02em' }}>
+        <h1 key={i} style={{ fontSize: '28px', fontWeight: 800, color: 'var(--go-text)', marginTop: '8px', marginBottom: '16px', letterSpacing: '-0.02em' }}>
           {line.slice(2)}
         </h1>
       );
@@ -75,10 +73,9 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
       continue;
     }
 
-    // H2
     if (line.startsWith('## ')) {
       elements.push(
-        <h2 key={i} style={{ fontSize: '20px', fontWeight: 700, color: '#F1F5F9', marginTop: '28px', marginBottom: '10px', letterSpacing: '-0.01em' }}>
+        <h2 key={i} style={{ fontSize: '20px', fontWeight: 700, color: 'var(--go-text)', marginTop: '28px', marginBottom: '10px', letterSpacing: '-0.01em' }}>
           {line.slice(3)}
         </h2>
       );
@@ -86,10 +83,9 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
       continue;
     }
 
-    // H3
     if (line.startsWith('### ')) {
       elements.push(
-        <h3 key={i} style={{ fontSize: '16px', fontWeight: 700, color: '#E2E8F0', marginTop: '20px', marginBottom: '8px' }}>
+        <h3 key={i} style={{ fontSize: '16px', fontWeight: 700, color: 'var(--go-text-secondary)', marginTop: '20px', marginBottom: '8px' }}>
           {line.slice(4)}
         </h3>
       );
@@ -97,18 +93,16 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
       continue;
     }
 
-    // HR
     if (line.trim() === '---') {
-      elements.push(<hr key={i} style={{ border: 'none', borderTop: '1px solid #1E2A3A', margin: '24px 0' }} />);
+      elements.push(<hr key={i} style={{ border: 'none', borderTop: '1px solid var(--go-border)', margin: '24px 0' }} />);
       i++;
       continue;
     }
 
-    // Table
     if (line.includes('|') && lines[i + 1]?.includes('---')) {
       const headerCells = line.split('|').filter(c => c.trim());
       const rows: string[][] = [];
-      i += 2; // skip header and separator
+      i += 2;
       while (i < lines.length && lines[i].includes('|')) {
         rows.push(lines[i].split('|').filter(c => c.trim()));
         i++;
@@ -117,9 +111,9 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
         <div key={`table-${i}`} style={{ overflowX: 'auto', margin: '16px 0' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #253047' }}>
+              <tr style={{ borderBottom: '1px solid var(--go-border)' }}>
                 {headerCells.map((cell, ci) => (
-                  <th key={ci} style={{ padding: '8px 12px', textAlign: 'left', color: '#94A3B8', fontWeight: 600, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <th key={ci} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--go-muted)', fontWeight: 600, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     {cell.trim()}
                   </th>
                 ))}
@@ -127,9 +121,9 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             </thead>
             <tbody>
               {rows.map((row, ri) => (
-                <tr key={ri} style={{ borderBottom: '1px solid #1E2A3A' }}>
+                <tr key={ri} style={{ borderBottom: '1px solid var(--go-border)' }}>
                   {row.map((cell, ci) => (
-                    <td key={ci} style={{ padding: '8px 12px', color: '#E2E8F0' }}>
+                    <td key={ci} style={{ padding: '8px 12px', color: 'var(--go-text-secondary)' }}>
                       {parseBold(cell.trim())}
                     </td>
                   ))}
@@ -142,7 +136,6 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
       continue;
     }
 
-    // Unordered list
     if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
       const items: string[] = [];
       while (i < lines.length && (lines[i].trim().startsWith('- ') || lines[i].trim().startsWith('* '))) {
@@ -152,8 +145,8 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
       elements.push(
         <ul key={`ul-${i}`} style={{ margin: '12px 0', paddingLeft: '20px', listStyle: 'none' }}>
           {items.map((item, ii) => (
-            <li key={ii} style={{ color: '#CBD5E1', marginBottom: '6px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-              <span style={{ color: '#00ADD8', marginTop: '2px', flexShrink: 0 }}>—</span>
+            <li key={ii} style={{ color: 'var(--go-text-secondary)', marginBottom: '6px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+              <span style={{ color: 'var(--go-cyan)', marginTop: '2px', flexShrink: 0 }}>—</span>
               <span>{parseBold(item)}</span>
             </li>
           ))}
@@ -162,16 +155,14 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
       continue;
     }
 
-    // Empty line
     if (line.trim() === '') {
       elements.push(<div key={i} style={{ height: '8px' }} />);
       i++;
       continue;
     }
 
-    // Paragraph
     elements.push(
-      <p key={i} style={{ color: '#CBD5E1', lineHeight: '1.75', marginBottom: '4px' }}>
+      <p key={i} style={{ color: 'var(--go-text-secondary)', lineHeight: '1.75', marginBottom: '4px' }}>
         {parseBold(line)}
       </p>
     );

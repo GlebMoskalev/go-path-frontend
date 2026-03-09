@@ -1,5 +1,7 @@
+import { motion } from 'motion/react';
+
 interface ProgressBarProps {
-  value: number; // 0-100
+  value: number;
   total?: number;
   completed?: number;
   color?: string;
@@ -7,14 +9,14 @@ interface ProgressBarProps {
   showLabel?: boolean;
 }
 
-export function ProgressBar({ value, total, completed, color = '#00ADD8', height = 4, showLabel = false }: ProgressBarProps) {
+export function ProgressBar({ value, total, completed, color = 'var(--go-cyan)', height = 4, showLabel = false }: ProgressBarProps) {
   const pct = Math.min(100, Math.max(0, value));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
       {showLabel && total !== undefined && completed !== undefined && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '12px', color: '#94A3B8' }}>{completed} / {total}</span>
+          <span style={{ fontSize: '12px', color: 'var(--go-muted)' }}>{completed} / {total}</span>
           <span style={{ fontSize: '12px', color: color, fontWeight: 600 }}>{Math.round(pct)}%</span>
         </div>
       )}
@@ -22,18 +24,19 @@ export function ProgressBar({ value, total, completed, color = '#00ADD8', height
         style={{
           width: '100%',
           height: `${height}px`,
-          background: '#1A2035',
+          background: 'var(--go-surface-2)',
           borderRadius: `${height}px`,
           overflow: 'hidden',
         }}
       >
-        <div
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1], delay: 0.1 }}
           style={{
-            width: `${pct}%`,
             height: '100%',
             background: color,
             borderRadius: `${height}px`,
-            transition: 'width 0.4s ease',
           }}
         />
       </div>

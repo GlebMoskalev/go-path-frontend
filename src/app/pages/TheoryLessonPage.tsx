@@ -4,6 +4,7 @@ import { fetchTheoryLesson, fetchTheoryChapters, completeTheoryLesson, type Theo
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { motion } from 'motion/react';
 
 interface NavItem {
   href: string;
@@ -106,50 +107,50 @@ export function TheoryLessonPage() {
 
   if (isLoading) {
     return (
-      <div style={{ minHeight: 'calc(100vh - 56px)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0F111A' }}>
-        <div style={{ fontSize: '14px', color: '#94A3B8' }}>Загрузка...</div>
+      <div style={{ minHeight: 'calc(100vh - 56px)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--go-bg)' }}>
+        <div style={{ fontSize: '14px', color: 'var(--go-muted)' }}>Загрузка...</div>
       </div>
     );
   }
 
   if (!lesson) {
     return (
-      <div style={{ minHeight: 'calc(100vh - 56px)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0F111A' }}>
+      <div style={{ minHeight: 'calc(100vh - 56px)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--go-bg)' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
-          <h2 style={{ color: '#F1F5F9', marginBottom: '8px' }}>Урок не найден</h2>
-          <Link to="/theory" style={{ color: '#00ADD8', textDecoration: 'none' }}>← Вернуться к теории</Link>
+          <h2 style={{ color: 'var(--go-text)', marginBottom: '8px' }}>Урок не найден</h2>
+          <Link to="/theory" style={{ color: 'var(--go-cyan)', textDecoration: 'none' }}>← Вернуться к теории</Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ background: '#0F111A', minHeight: 'calc(100vh - 56px)' }}>
+    <div style={{ background: 'var(--go-bg)', minHeight: 'calc(100vh - 56px)' }}>
       <main style={{ maxWidth: '800px', margin: '0 auto', padding: '40px 48px 80px' }}>
         {/* Breadcrumb */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '28px', flexWrap: 'wrap' }}>
-          <Link to="/theory" style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = '#F1F5F9')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = '#94A3B8')}
+          <Link to="/theory" style={{ fontSize: '13px', color: 'var(--go-muted)', textDecoration: 'none' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--go-text)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--go-muted)')}
           >
             Теория
           </Link>
-          <ChevronRight size={13} style={{ color: '#64748B' }} />
-          <span style={{ fontSize: '13px', color: '#94A3B8' }}>{lesson.chapter_slug}</span>
-          <ChevronRight size={13} style={{ color: '#64748B' }} />
-          <span style={{ fontSize: '13px', color: '#F1F5F9' }}>{lesson.title}</span>
+          <ChevronRight size={13} style={{ color: 'var(--go-subtle)' }} />
+          <span style={{ fontSize: '13px', color: 'var(--go-muted)' }}>{lesson.chapter_slug}</span>
+          <ChevronRight size={13} style={{ color: 'var(--go-subtle)' }} />
+          <span style={{ fontSize: '13px', color: 'var(--go-text)' }}>{lesson.title}</span>
         </div>
 
         {/* Lesson header */}
         <div style={{ marginBottom: '32px' }}>
-          <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--go-subtle)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
             Урок {lesson.order}
           </div>
-          <h1 style={{ fontSize: '32px', fontWeight: 800, color: '#F1F5F9', letterSpacing: '-0.03em', marginBottom: '8px' }}>
+          <h1 style={{ fontSize: '32px', fontWeight: 800, color: 'var(--go-text)', letterSpacing: '-0.03em', marginBottom: '8px' }}>
             {lesson.title}
           </h1>
-          <p style={{ fontSize: '15px', color: '#94A3B8' }}>{lesson.description}</p>
+          <p style={{ fontSize: '15px', color: 'var(--go-muted)' }}>{lesson.description}</p>
         </div>
 
         {/* Content */}
@@ -158,9 +159,11 @@ export function TheoryLessonPage() {
         {/* Complete button */}
         {user && (
           <div style={{ marginTop: '40px' }}>
-            <button
+            <motion.button
               onClick={handleComplete}
               disabled={isCompleted || isCompleting}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
               style={{
                 width: '100%',
                 display: 'flex',
@@ -168,10 +171,10 @@ export function TheoryLessonPage() {
                 justifyContent: 'center',
                 gap: '10px',
                 padding: '16px 24px',
-                borderRadius: '10px',
-                border: isCompleted ? '1px solid #10B98133' : '1px solid #00ADD833',
-                background: isCompleted ? '#10B98112' : '#00ADD812',
-                color: isCompleted ? '#10B981' : '#00ADD8',
+                borderRadius: '12px',
+                border: isCompleted ? '1px solid var(--go-green-muted)' : '1px solid var(--go-cyan-muted)',
+                background: isCompleted ? 'var(--go-green-muted)' : 'var(--go-cyan-muted)',
+                color: isCompleted ? 'var(--go-green)' : 'var(--go-cyan)',
                 fontSize: '15px',
                 fontWeight: 600,
                 cursor: isCompleted ? 'default' : 'pointer',
@@ -180,14 +183,14 @@ export function TheoryLessonPage() {
               }}
               onMouseEnter={(e) => {
                 if (!isCompleted && !isCompleting) {
-                  (e.currentTarget as HTMLElement).style.background = '#00ADD820';
-                  (e.currentTarget as HTMLElement).style.borderColor = '#00ADD8';
+                  (e.currentTarget as HTMLElement).style.background = 'var(--go-cyan-muted)';
+                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--go-cyan)';
                 }
               }}
               onMouseLeave={(e) => {
                 if (!isCompleted && !isCompleting) {
-                  (e.currentTarget as HTMLElement).style.background = '#00ADD812';
-                  (e.currentTarget as HTMLElement).style.borderColor = '#00ADD833';
+                  (e.currentTarget as HTMLElement).style.background = 'var(--go-cyan-muted)';
+                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--go-cyan-muted)';
                 }
               }}
             >
@@ -204,9 +207,9 @@ export function TheoryLessonPage() {
                   Отметить как прочитанный
                 </>
               )}
-            </button>
+            </motion.button>
             {completeError && (
-              <div style={{ marginTop: '8px', fontSize: '13px', color: '#EF4444', textAlign: 'center' }}>
+              <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--go-red)', textAlign: 'center' }}>
                 {completeError}
               </div>
             )}
@@ -214,7 +217,7 @@ export function TheoryLessonPage() {
         )}
 
         {/* Navigation */}
-        <div style={{ display: 'flex', gap: '12px', marginTop: '16px', paddingTop: '32px', borderTop: '1px solid #1E2A3A' }}>
+        <div style={{ display: 'flex', gap: '12px', marginTop: '16px', paddingTop: '32px', borderTop: '1px solid var(--go-border)' }}>
           {nav.prev ? (
             <Link
               to={nav.prev.href}
@@ -224,26 +227,26 @@ export function TheoryLessonPage() {
                 alignItems: 'center',
                 gap: '8px',
                 padding: '14px 20px',
-                borderRadius: '10px',
-                border: '1px solid #1E2A3A',
-                background: '#141824',
+                borderRadius: '12px',
+                border: '1px solid var(--go-border)',
+                background: 'var(--go-surface)',
                 textDecoration: 'none',
                 cursor: 'pointer',
                 overflow: 'hidden',
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = '#00ADD8';
-                (e.currentTarget as HTMLElement).style.background = '#1A2035';
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--go-cyan)';
+                (e.currentTarget as HTMLElement).style.background = 'var(--go-surface-2)';
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = '#1E2A3A';
-                (e.currentTarget as HTMLElement).style.background = '#141824';
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--go-border)';
+                (e.currentTarget as HTMLElement).style.background = 'var(--go-surface)';
               }}
             >
-              <ChevronLeft size={16} style={{ color: '#00ADD8', flexShrink: 0 }} />
+              <ChevronLeft size={16} style={{ color: 'var(--go-cyan)', flexShrink: 0 }} />
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: '11px', color: '#64748B', marginBottom: '2px' }}>{nav.prev.label}</div>
-                <div style={{ fontSize: '13px', color: '#E2E8F0', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nav.prev.title}</div>
+                <div style={{ fontSize: '11px', color: 'var(--go-subtle)', marginBottom: '2px' }}>{nav.prev.label}</div>
+                <div style={{ fontSize: '13px', color: 'var(--go-text-secondary)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nav.prev.title}</div>
               </div>
             </Link>
           ) : (
@@ -255,25 +258,25 @@ export function TheoryLessonPage() {
                 alignItems: 'center',
                 gap: '8px',
                 padding: '14px 20px',
-                borderRadius: '10px',
-                border: '1px solid #1E2A3A',
-                background: '#141824',
+                borderRadius: '12px',
+                border: '1px solid var(--go-border)',
+                background: 'var(--go-surface)',
                 textDecoration: 'none',
                 cursor: 'pointer',
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = '#00ADD8';
-                (e.currentTarget as HTMLElement).style.background = '#1A2035';
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--go-cyan)';
+                (e.currentTarget as HTMLElement).style.background = 'var(--go-surface-2)';
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = '#1E2A3A';
-                (e.currentTarget as HTMLElement).style.background = '#141824';
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--go-border)';
+                (e.currentTarget as HTMLElement).style.background = 'var(--go-surface)';
               }}
             >
-              <ChevronLeft size={16} style={{ color: '#00ADD8', flexShrink: 0 }} />
+              <ChevronLeft size={16} style={{ color: 'var(--go-cyan)', flexShrink: 0 }} />
               <div>
-                <div style={{ fontSize: '11px', color: '#64748B', marginBottom: '2px' }}>Назад</div>
-                <div style={{ fontSize: '13px', color: '#E2E8F0', fontWeight: 500 }}>Все уроки</div>
+                <div style={{ fontSize: '11px', color: 'var(--go-subtle)', marginBottom: '2px' }}>Назад</div>
+                <div style={{ fontSize: '13px', color: 'var(--go-text-secondary)', fontWeight: 500 }}>Все уроки</div>
               </div>
             </Link>
           )}
@@ -288,30 +291,30 @@ export function TheoryLessonPage() {
                 justifyContent: 'flex-end',
                 gap: '8px',
                 padding: '14px 20px',
-                borderRadius: '10px',
-                border: '1px solid #1E2A3A',
-                background: nav.next.href === '/theory' ? '#10B98112' : '#141824',
+                borderRadius: '12px',
+                border: '1px solid var(--go-border)',
+                background: nav.next.href === '/theory' ? 'var(--go-green-muted)' : 'var(--go-surface)',
                 textDecoration: 'none',
                 cursor: 'pointer',
                 overflow: 'hidden',
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = nav.next!.href === '/theory' ? '#10B981' : '#00ADD8';
-                (e.currentTarget as HTMLElement).style.background = nav.next!.href === '/theory' ? '#10B98120' : '#1A2035';
+                (e.currentTarget as HTMLElement).style.borderColor = nav.next!.href === '/theory' ? 'var(--go-green)' : 'var(--go-cyan)';
+                (e.currentTarget as HTMLElement).style.background = nav.next!.href === '/theory' ? 'var(--go-green-muted)' : 'var(--go-surface-2)';
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = '#1E2A3A';
-                (e.currentTarget as HTMLElement).style.background = nav.next!.href === '/theory' ? '#10B98112' : '#141824';
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--go-border)';
+                (e.currentTarget as HTMLElement).style.background = nav.next!.href === '/theory' ? 'var(--go-green-muted)' : 'var(--go-surface)';
               }}
             >
               <div style={{ minWidth: 0, textAlign: 'right' }}>
-                <div style={{ fontSize: '11px', color: '#64748B', marginBottom: '2px' }}>{nav.next.label}</div>
-                <div style={{ fontSize: '13px', color: '#E2E8F0', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nav.next.title}</div>
+                <div style={{ fontSize: '11px', color: 'var(--go-subtle)', marginBottom: '2px' }}>{nav.next.label}</div>
+                <div style={{ fontSize: '13px', color: 'var(--go-text-secondary)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nav.next.title}</div>
               </div>
               {nav.next.href === '/theory' ? (
-                <BookOpen size={16} style={{ color: '#10B981', flexShrink: 0 }} />
+                <BookOpen size={16} style={{ color: 'var(--go-green)', flexShrink: 0 }} />
               ) : (
-                <ChevronRight size={16} style={{ color: '#00ADD8', flexShrink: 0 }} />
+                <ChevronRight size={16} style={{ color: 'var(--go-cyan)', flexShrink: 0 }} />
               )}
             </Link>
           )}

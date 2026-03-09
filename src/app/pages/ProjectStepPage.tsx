@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronRight, Play, Sparkles, CheckCircle2, AlertCircle,
   Lightbulb, ChevronDown
@@ -112,19 +113,19 @@ export function ProjectStepPage() {
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 56px)', background: '#0F111A' }}>
-        <div style={{ fontSize: '14px', color: '#94A3B8' }}>Загрузка...</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 56px)', background: 'var(--go-bg)' }}>
+        <div style={{ fontSize: '14px', color: 'var(--go-muted)' }}>Загрузка...</div>
       </div>
     );
   }
 
   if (!step) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 56px)', background: '#0F111A' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 56px)', background: 'var(--go-bg)' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
-          <h2 style={{ color: '#F1F5F9', marginBottom: '8px' }}>Шаг не найден</h2>
-          <Link to="/projects" style={{ color: '#00ADD8', textDecoration: 'none' }}>← К проектам</Link>
+          <h2 style={{ color: 'var(--go-text)', marginBottom: '8px' }}>Шаг не найден</h2>
+          <Link to="/projects" style={{ color: 'var(--go-cyan)', textDecoration: 'none' }}>← К проектам</Link>
         </div>
       </div>
     );
@@ -133,27 +134,27 @@ export function ProjectStepPage() {
   const allPassed = testResults.length > 0 && testResults.every((r) => r.passed);
 
   return (
-    <div style={{ background: '#0F111A', minHeight: 'calc(100vh - 56px)' }}>
+    <div style={{ background: 'var(--go-bg)', minHeight: 'calc(100vh - 56px)' }}>
       {/* Breadcrumb */}
-      <div style={{ borderBottom: '1px solid #1E2A3A', padding: '10px 24px', background: '#141824', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-        <Link to="/projects" style={{ fontSize: '13px', color: '#94A3B8', textDecoration: 'none' }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#F1F5F9')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = '#94A3B8')}
+      <div style={{ borderBottom: '1px solid var(--go-border)', padding: '10px 24px', background: 'var(--go-surface)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+        <Link to="/projects" style={{ fontSize: '13px', color: 'var(--go-muted)', textDecoration: 'none' }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--go-text)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--go-muted)')}
         >
           Проекты
         </Link>
-        <ChevronRight size={13} style={{ color: '#64748B' }} />
-        <span style={{ fontSize: '13px', color: '#94A3B8' }}>{step.project_slug}</span>
-        <ChevronRight size={13} style={{ color: '#64748B' }} />
-        <span style={{ fontSize: '13px', color: '#F1F5F9' }}>{step.title}</span>
+        <ChevronRight size={13} style={{ color: 'var(--go-subtle)' }} />
+        <span style={{ fontSize: '13px', color: 'var(--go-muted)' }}>{step.project_slug}</span>
+        <ChevronRight size={13} style={{ color: 'var(--go-subtle)' }} />
+        <span style={{ fontSize: '13px', color: 'var(--go-text)' }}>{step.title}</span>
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '12px', color: '#94A3B8' }}>
+          <span style={{ fontSize: '12px', color: 'var(--go-muted)' }}>
             Шаг {step.order}
           </span>
           <DifficultyBadge difficulty={step.difficulty} size="sm" />
           {submitted && (
-            <span style={{ fontSize: '12px', color: '#10B981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '12px', color: 'var(--go-green)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
               <CheckCircle2 size={13} /> Решён
             </span>
           )}
@@ -167,7 +168,7 @@ export function ProjectStepPage() {
           style={{
             width: '45%',
             flexShrink: 0,
-            borderRight: '1px solid #1E2A3A',
+            borderRight: '1px solid var(--go-border)',
             overflowY: 'auto',
             padding: '28px 28px 40px',
           }}
@@ -180,11 +181,11 @@ export function ProjectStepPage() {
               gap: '6px', 
               padding: '5px 10px', 
               borderRadius: '6px', 
-              background: '#1A2035', 
-              border: '1px solid #253047', 
+              background: 'var(--go-surface-2)', 
+              border: '1px solid var(--go-border-2)', 
               marginBottom: '16px' 
             }}>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: '#94A3B8' }}>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: 'var(--go-muted)' }}>
                 📄 {step.file}
               </span>
             </div>
@@ -196,8 +197,8 @@ export function ProjectStepPage() {
           {step.hints && step.hints.length > 0 && (
             <div style={{ marginTop: '32px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                <Lightbulb size={16} style={{ color: '#F59E0B' }} />
-                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#F1F5F9', margin: 0 }}>
+                <Lightbulb size={16} style={{ color: 'var(--go-amber)' }} />
+                <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--go-text)', margin: 0 }}>
                   Подсказки
                 </h3>
               </div>
@@ -206,10 +207,10 @@ export function ProjectStepPage() {
                   <div
                     key={index}
                     style={{
-                      border: '1px solid #1E2A3A',
-                      borderRadius: '8px',
+                      border: '1px solid var(--go-border)',
+                      borderRadius: '10px',
                       overflow: 'hidden',
-                      background: '#141824',
+                      background: 'var(--go-surface)',
                     }}
                   >
                     <button
@@ -223,7 +224,7 @@ export function ProjectStepPage() {
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         cursor: 'pointer',
-                        color: '#E2E8F0',
+                        color: 'var(--go-text-secondary)',
                         fontSize: '13px',
                         fontWeight: 600,
                       }}
@@ -234,15 +235,25 @@ export function ProjectStepPage() {
                         style={{
                           transform: openHints.includes(index) ? 'rotate(180deg)' : 'rotate(0deg)',
                           transition: 'transform 0.2s',
-                          color: '#94A3B8',
+                          color: 'var(--go-muted)',
                         }}
                       />
                     </button>
-                    {openHints.includes(index) && (
-                      <div style={{ padding: '0 16px 16px', fontSize: '13px', color: '#94A3B8', lineHeight: '1.6' }}>
-                        {hint}
-                      </div>
-                    )}
+                    <AnimatePresence initial={false}>
+                      {openHints.includes(index) && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25, ease: 'easeInOut' }}
+                          style={{ overflow: 'hidden' }}
+                        >
+                          <div style={{ padding: '0 16px 16px', fontSize: '13px', color: 'var(--go-muted)', lineHeight: '1.6' }}>
+                            {hint}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 ))}
               </div>
@@ -263,7 +274,7 @@ export function ProjectStepPage() {
           </div>
 
           {/* Submit button */}
-          <div style={{ padding: '12px 16px', borderTop: '1px solid #1E2A3A', display: 'flex', gap: '8px', alignItems: 'center', background: '#141824', flexShrink: 0 }}>
+          <div style={{ padding: '12px 16px', borderTop: '1px solid var(--go-border)', display: 'flex', gap: '8px', alignItems: 'center', background: 'var(--go-surface)', flexShrink: 0 }}>
             <button
               onClick={handleSubmit}
               disabled={isRunning}
@@ -272,17 +283,17 @@ export function ProjectStepPage() {
                 alignItems: 'center',
                 gap: '6px',
                 padding: '9px 18px',
-                borderRadius: '8px',
-                background: isRunning ? '#253047' : '#00ADD8',
+                borderRadius: '10px',
+                background: isRunning ? 'var(--go-border-2)' : 'var(--go-cyan)',
                 border: 'none',
-                color: isRunning ? '#94A3B8' : '#0F111A',
+                color: isRunning ? 'var(--go-muted)' : 'var(--go-bg)',
                 fontSize: '13px',
                 fontWeight: 700,
                 cursor: isRunning ? 'not-allowed' : 'pointer',
                 fontFamily: 'Manrope, sans-serif',
               }}
-              onMouseEnter={(e) => { if (!isRunning) (e.currentTarget.style.background = '#00C4F5'); }}
-              onMouseLeave={(e) => { if (!isRunning) (e.currentTarget.style.background = '#00ADD8'); }}
+              onMouseEnter={(e) => { if (!isRunning) (e.currentTarget.style.background = 'var(--go-cyan-hover)'); }}
+              onMouseLeave={(e) => { if (!isRunning) (e.currentTarget.style.background = 'var(--go-cyan)'); }}
             >
               <Play size={14} />
               {isRunning ? 'Проверка...' : 'Запустить тесты'}
@@ -297,11 +308,11 @@ export function ProjectStepPage() {
                 alignItems: 'center',
                 gap: '6px',
                 padding: '9px 16px',
-                borderRadius: '8px',
+                borderRadius: '10px',
                 background: 'transparent',
                 border: '1px solid',
-                borderColor: allPassed ? '#F59E0B' : '#253047',
-                color: allPassed ? '#F59E0B' : '#64748B',
+                borderColor: allPassed ? 'var(--go-amber)' : 'var(--go-border-2)',
+                color: allPassed ? 'var(--go-amber)' : 'var(--go-subtle)',
                 fontSize: '13px',
                 fontWeight: 600,
                 cursor: allPassed && !isLoadingAI ? 'pointer' : 'not-allowed',
@@ -316,7 +327,7 @@ export function ProjectStepPage() {
             </button>
 
             {allPassed && (
-              <span style={{ marginLeft: 'auto', fontSize: '13px', color: '#10B981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ marginLeft: 'auto', fontSize: '13px', color: 'var(--go-green)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <CheckCircle2 size={14} />
                 Все тесты пройдены!
               </span>
@@ -324,9 +335,9 @@ export function ProjectStepPage() {
           </div>
 
           {/* Results panel */}
-          <div style={{ flex: 1, borderTop: '1px solid #1E2A3A', overflowY: 'auto', background: '#0F111A' }}>
+          <div style={{ flex: 1, borderTop: '1px solid var(--go-border)', overflowY: 'auto', background: 'var(--go-bg)' }}>
             {/* Tabs */}
-            <div style={{ display: 'flex', borderBottom: '1px solid #1E2A3A', background: '#141824' }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--go-border)', background: 'var(--go-surface)' }}>
               {[
                 { id: 'tests', label: 'Тесты' },
                 { id: 'ai', label: '✦ AI Анализ' },
@@ -338,8 +349,8 @@ export function ProjectStepPage() {
                     padding: '8px 16px',
                     background: 'none',
                     border: 'none',
-                    borderBottom: `2px solid ${activeTab === tab.id ? '#00ADD8' : 'transparent'}`,
-                    color: activeTab === tab.id ? '#00ADD8' : '#94A3B8',
+                    borderBottom: `2px solid ${activeTab === tab.id ? 'var(--go-cyan)' : 'transparent'}`,
+                    color: activeTab === tab.id ? 'var(--go-cyan)' : 'var(--go-muted)',
                     fontSize: '13px',
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -363,14 +374,14 @@ export function ProjectStepPage() {
                         style={{
                           width: '32px',
                           height: '32px',
-                          border: '3px solid #253047',
-                          borderTopColor: '#F59E0B',
+                          border: '3px solid var(--go-border-2)',
+                          borderTopColor: 'var(--go-amber)',
                           borderRadius: '50%',
                           margin: '0 auto 16px',
                         }}
                         className="animate-spin"
                       />
-                      <div style={{ fontSize: '14px', color: '#94A3B8' }}>
+                      <div style={{ fontSize: '14px', color: 'var(--go-muted)' }}>
                         Анализируем ваше решение...
                       </div>
                     </div>
@@ -379,20 +390,20 @@ export function ProjectStepPage() {
                       style={{
                         background: 'rgba(245,158,11,0.06)',
                         border: '1px solid rgba(245,158,11,0.2)',
-                        borderRadius: '10px',
+                        borderRadius: '12px',
                         padding: '16px',
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                        <Sparkles size={16} style={{ color: '#F59E0B' }} />
-                        <span style={{ fontSize: '13px', fontWeight: 700, color: '#F59E0B' }}>AI-анализ решения</span>
+                        <Sparkles size={16} style={{ color: 'var(--go-amber)' }} />
+                        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--go-amber)' }}>AI-анализ решения</span>
                       </div>
                       <MarkdownRenderer content={aiRecommendation} />
                     </div>
                   ) : (
                     <div style={{ textAlign: 'center', padding: '40px 24px' }}>
-                      <AlertCircle size={32} style={{ color: '#64748B', marginBottom: '12px' }} />
-                      <div style={{ fontSize: '14px', color: '#94A3B8' }}>
+                      <AlertCircle size={32} style={{ color: 'var(--go-subtle)', marginBottom: '12px' }} />
+                      <div style={{ fontSize: '14px', color: 'var(--go-muted)' }}>
                         {allPassed
                           ? 'Нажмите «AI Анализ» чтобы получить рекомендации'
                           : 'AI-анализ доступен после успешного решения шага'}
