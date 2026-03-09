@@ -29,19 +29,107 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
     if (defaultValue) onChange(defaultValue);
   };
 
+  const setCursor = (pos: number) => {
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        textareaRef.current.selectionStart = pos;
+        textareaRef.current.selectionEnd = pos;
+      }
+    });
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const ta = e.currentTarget;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+
     if (e.key === 'Tab') {
       e.preventDefault();
-      const start = e.currentTarget.selectionStart;
-      const end = e.currentTarget.selectionEnd;
-      const newVal = value.substring(0, start) + '    ' + value.substring(end);
-      onChange(newVal);
-      requestAnimationFrame(() => {
-        if (textareaRef.current) {
-          textareaRef.current.selectionStart = start + 4;
-          textareaRef.current.selectionEnd = start + 4;
+      if (e.shiftKey) {
+        const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+        const line = value.substring(lineStart, start);
+        const stripped = line.replace(/^ {1,4}/, '');
+        const removed = line.length - stripped.length;
+        if (removed > 0) {
+          const newVal = value.substring(0, lineStart) + stripped + value.substring(start);
+          onChange(newVal);
+          setCursor(start - removed);
         }
-      });
+      } else {
+        const newVal = value.substring(0, start) + '    ' + value.substring(end);
+        onChange(newVal);
+        setCursor(start + 4);
+      }
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+      const currentLine = value.substring(lineStart, start);
+      const indent = currentLine.match(/^(\s*)/)?.[1] || '';
+      const charBefore = value[start - 1];
+      const charAfter = value[start];
+
+      if (charBefore === '{' && charAfter === '}') {
+        const inner = '\n' + indent + '    ';
+        const closing = '\n' + indent;
+        const newVal = value.substring(0, start) + inner + closing + value.substring(start);
+        onChange(newVal);
+        setCursor(start + inner.length);
+      } else if (charBefore === '{' || charBefore === '(') {
+        const newIndent = indent + '    ';
+        const newVal = value.substring(0, start) + '\n' + newIndent + value.substring(end);
+        onChange(newVal);
+        setCursor(start + 1 + newIndent.length);
+      } else {
+        const newVal = value.substring(0, start) + '\n' + indent + value.substring(end);
+        onChange(newVal);
+        setCursor(start + 1 + indent.length);
+      }
+      return;
+    }
+
+    if (e.key === '}' || e.key === ')') {
+      const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+      const beforeCursor = value.substring(lineStart, start);
+      if (/^\s+$/.test(beforeCursor) && beforeCursor.length >= 4) {
+        e.preventDefault();
+        const dedented = beforeCursor.substring(4);
+        const newVal = value.substring(0, lineStart) + dedented + e.key + value.substring(end);
+        onChange(newVal);
+        setCursor(lineStart + dedented.length + 1);
+        return;
+      }
+    }
+
+    const pairs: Record<string, string> = { '{': '}', '(': ')', '[': ']', '"': '"', "'": "'", '`': '`' };
+    if (pairs[e.key]) {
+      e.preventDefault();
+      const pair = pairs[e.key];
+      const newVal = value.substring(0, start) + e.key + pair + value.substring(end);
+      onChange(newVal);
+      setCursor(start + 1);
+      return;
+    }
+
+    if ((e.key === '}' || e.key === ')' || e.key === ']' || e.key === '"' || e.key === "'" || e.key === '`') && value[start] === e.key) {
+      e.preventDefault();
+      setCursor(start + 1);
+      return;
+    }
+
+    if (e.key === 'Backspace' && start === end && start > 0) {
+      const before = value[start - 1];
+      const after = value[start];
+      const autoPairs: Record<string, string> = { '{': '}', '(': ')', '[': ']', '"': '"', "'": "'", '`': '`' };
+      if (autoPairs[before] === after) {
+        e.preventDefault();
+        const newVal = value.substring(0, start - 1) + value.substring(start + 1);
+        onChange(newVal);
+        setCursor(start - 1);
+        return;
+      }
     }
   };
 
