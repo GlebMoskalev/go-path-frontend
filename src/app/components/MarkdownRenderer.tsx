@@ -5,12 +5,12 @@ interface MarkdownRendererProps {
   content: string;
 }
 
-function parseInlineCode(text: string): React.ReactNode[] {
+function parseInlineCode(text: string, keyPrefix: string): React.ReactNode[] {
   const parts = text.split(/`([^`]+)`/);
   return parts.map((part, i) =>
     i % 2 === 1 ? (
       <code
-        key={i}
+        key={`${keyPrefix}c${i}`}
         style={{
           fontFamily: "'JetBrains Mono', monospace",
           fontSize: '0.88em',
@@ -31,9 +31,11 @@ function parseInlineCode(text: string): React.ReactNode[] {
 
 function parseBold(text: string): React.ReactNode[] {
   const parts = text.split(/\*\*([^*]+)\*\*/);
-  return parts.map((part, i) =>
-    i % 2 === 1 ? <strong key={i} style={{ color: '#F1F5F9', fontWeight: 700 }}>{part}</strong> : parseInlineCode(part)
-  ).flat();
+  return parts.flatMap((part, i) =>
+    i % 2 === 1
+      ? [<strong key={`b${i}`} style={{ color: '#F1F5F9', fontWeight: 700 }}>{part}</strong>]
+      : parseInlineCode(part, `${i}-`)
+  );
 }
 
 export function MarkdownRenderer({ content }: MarkdownRendererProps) {

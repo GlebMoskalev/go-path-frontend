@@ -245,14 +245,12 @@ export function TaskEditorPage() {
         </Link>
         <ChevronRight size={13} style={{ color: '#64748B' }} />
         <span style={{ fontSize: '13px', color: '#F1F5F9' }}>{task.title}</span>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <DifficultyBadge difficulty={task.difficulty} size="sm" />
-          {submitted && (
-            <span style={{ fontSize: '12px', color: '#10B981', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
-              <CheckCircle2 size={13} /> Решена
-            </span>
-          )}
-        </div>
+        <DifficultyBadge difficulty={task.difficulty} size="sm" />
+        {submitted && (
+          <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#10B981', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+            <CheckCircle2 size={13} /> Решена
+          </span>
+        )}
       </div>
 
       {/* Split layout */}

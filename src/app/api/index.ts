@@ -16,12 +16,18 @@ export interface UserProfile {
   updated_at: string;
 }
 
+export interface ChapterProgress {
+  total: number;
+  completed: number;
+}
+
 export interface TheoryChapter {
   slug: string;
   title: string;
   description: string;
   order: number;
   lessons: TheoryLessonSummary[];
+  progress?: ChapterProgress;
 }
 
 export interface TheoryLessonSummary {
@@ -29,6 +35,7 @@ export interface TheoryLessonSummary {
   title: string;
   description: string;
   order: number;
+  completed?: boolean;
 }
 
 export interface TheoryLesson {
@@ -38,6 +45,7 @@ export interface TheoryLesson {
   order: number;
   chapter_slug: string;
   content: string;
+  completed?: boolean;
 }
 
 export type Difficulty = 'easy' | 'medium' | 'hard';
@@ -195,6 +203,13 @@ export function fetchTheoryChapter(chapterSlug: string) {
 export function fetchTheoryLesson(chapterSlug: string, lessonSlug: string) {
   return apiFetch<TheoryLesson>(
     `/api/theory/${encodeURIComponent(chapterSlug)}/${encodeURIComponent(lessonSlug)}`
+  );
+}
+
+export function completeTheoryLesson(chapterSlug: string, lessonSlug: string) {
+  return apiFetch<{ message: string }>(
+    `/api/theory/${encodeURIComponent(chapterSlug)}/${encodeURIComponent(lessonSlug)}/complete`,
+    { method: 'PUT' }
   );
 }
 

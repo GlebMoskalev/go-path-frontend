@@ -3,8 +3,10 @@ import { Link, useNavigate } from 'react-router';
 import { ChevronRight, ChevronDown, Clock, CheckCircle2, BookOpen, Lock } from 'lucide-react';
 import { fetchTheoryChapters, type TheoryChapter } from '../api';
 import { ProgressBar } from '../components/ProgressBar';
+import { useAuth } from '../context/AuthContext';
 
 export function TheoryPage() {
+  const { user } = useAuth();
   const [expandedChapters, setExpandedChapters] = useState<string[]>(['01-basics']);
   const [chapters, setChapters] = useState<TheoryChapter[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,7 +57,7 @@ export function TheoryPage() {
         </div>
 
         {chapters.map((chapter) => {
-          const completed = 0; // TODO: track lesson completion
+          const completed = chapter.progress?.completed ?? 0;
           const isExpanded = expandedChapters.includes(chapter.slug);
 
           return (
@@ -109,16 +111,20 @@ export function TheoryPage() {
                       onMouseEnter={(e) => (e.currentTarget.style.background = '#1A2035')}
                       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     >
-                      <div
-                        style={{
-                          width: '13px',
-                          height: '13px',
-                          borderRadius: '50%',
-                          border: '1.5px solid #253047',
-                          flexShrink: 0,
-                        }}
-                      />
-                      <span style={{ fontSize: '13px', color: '#94A3B8', lineHeight: '1.4' }}>
+                      {lesson.completed ? (
+                        <CheckCircle2 size={13} style={{ color: '#10B981', flexShrink: 0 }} />
+                      ) : (
+                        <div
+                          style={{
+                            width: '13px',
+                            height: '13px',
+                            borderRadius: '50%',
+                            border: '1.5px solid #253047',
+                            flexShrink: 0,
+                          }}
+                        />
+                      )}
+                      <span style={{ fontSize: '13px', color: lesson.completed ? '#E2E8F0' : '#94A3B8', lineHeight: '1.4' }}>
                         {lesson.title}
                       </span>
                     </Link>
@@ -147,8 +153,8 @@ export function TheoryPage() {
         {/* Chapters */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {chapters.map((chapter) => {
-            const completed = 0; // TODO: track lesson completion
-            const pct = 0;
+            const completed = chapter.progress?.completed ?? 0;
+            const pct = chapter.lessons.length > 0 ? (completed / chapter.lessons.length) * 100 : 0;
 
             return (
               <div
@@ -214,27 +220,31 @@ export function TheoryPage() {
                         style={{
                           padding: '16px',
                           borderRadius: '8px',
-                          border: '1px solid #1E2A3A',
-                          background: '#0F111A',
+                          border: `1px solid ${lesson.completed ? '#10B98133' : '#1E2A3A'}`,
+                          background: lesson.completed ? '#10B98108' : '#0F111A',
                           cursor: 'pointer',
                           display: 'flex',
                           flexDirection: 'column',
                           gap: '8px',
                         }}
                         onMouseEnter={(e) => {
-                          (e.currentTarget as HTMLElement).style.borderColor = '#00ADD8';
+                          (e.currentTarget as HTMLElement).style.borderColor = lesson.completed ? '#10B981' : '#00ADD8';
                           (e.currentTarget as HTMLElement).style.background = '#141824';
                         }}
                         onMouseLeave={(e) => {
-                          (e.currentTarget as HTMLElement).style.borderColor = '#1E2A3A';
-                          (e.currentTarget as HTMLElement).style.background = '#0F111A';
+                          (e.currentTarget as HTMLElement).style.borderColor = lesson.completed ? '#10B98133' : '#1E2A3A';
+                          (e.currentTarget as HTMLElement).style.background = lesson.completed ? '#10B98108' : '#0F111A';
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>
                             Урок {lesson.order}
                           </span>
-                          <BookOpen size={14} style={{ color: '#64748B' }} />
+                          {lesson.completed ? (
+                            <CheckCircle2 size={14} style={{ color: '#10B981' }} />
+                          ) : (
+                            <BookOpen size={14} style={{ color: '#64748B' }} />
+                          )}
                         </div>
                         <div style={{ fontSize: '14px', fontWeight: 600, color: '#E2E8F0', lineHeight: '1.4' }}>
                           {lesson.title}
