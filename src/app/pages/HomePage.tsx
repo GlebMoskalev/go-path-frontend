@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { BookOpen, Code2, Brain, FolderGit2, ArrowRight, CheckCircle, Zap, Trophy, Users, XCircle } from 'lucide-react';
+import { BookOpen, Code2, Brain, FolderGit2, ArrowRight, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useEffect, useState } from 'react';
@@ -11,13 +11,6 @@ const features = [
   { icon: <Code2 size={22} />, title: 'Задачи', description: 'Практические задачи с проверкой в реальном времени. Встроенный редактор кода.', to: '/tasks', color: 'var(--go-green)' },
   { icon: <Brain size={22} />, title: 'Квизы', description: 'Проверьте знания через вопросы с вариантами ответов и мгновенной обратной связью.', to: '/quiz', color: 'var(--go-amber)' },
   { icon: <FolderGit2 size={22} />, title: 'Проекты', description: 'Пошаговое создание реальных Go-приложений: REST API, CLI-инструменты.', to: '/projects', color: '#c792ea' },
-];
-
-const advantages = [
-  { icon: <Zap size={18} />, title: 'Быстрый старт', desc: 'Никаких установок. Пишите и проверяйте код прямо в браузере.' },
-  { icon: <CheckCircle size={18} />, title: 'Проверка кода', desc: 'Автоматические тесты дают мгновенную обратную связь.' },
-  { icon: <Trophy size={18} />, title: 'Прогресс', desc: 'Отслеживайте прогресс по главам, задачам и проектам.' },
-  { icon: <Users size={18} />, title: 'Реальный контент', desc: 'Материал из реальных Go-паттернов и лучших практик.' },
 ];
 
 const stats = [
@@ -264,34 +257,6 @@ func main() {
           />
         </div>
       </AnimatedSection>
-
-      {/* Advantages */}
-      <section style={{ padding: '0 24px 80px' }}>
-        <div style={{ maxWidth: '960px', margin: '0 auto' }}>
-          <AnimatedSection style={{ textAlign: 'center', marginBottom: '48px' }}>
-            <h2 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--go-text)', letterSpacing: '-0.03em', marginBottom: '12px' }}>
-              Почему Go Path?
-            </h2>
-          </AnimatedSection>
-          <StaggerContainer style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-            {advantages.map((a, i) => (
-              <StaggerItem key={i}>
-                <div style={{
-                  background: 'var(--go-surface)', border: '1px solid var(--go-border)',
-                  borderRadius: '12px', padding: '24px', transition: 'transform 0.2s, box-shadow 0.2s',
-                }}
-                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
-                >
-                  <div style={{ color: 'var(--go-cyan)', marginBottom: '12px' }}>{a.icon}</div>
-                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--go-text)', marginBottom: '8px' }}>{a.title}</div>
-                  <div style={{ fontSize: '13px', color: 'var(--go-muted)', lineHeight: '1.6' }}>{a.desc}</div>
-                </div>
-              </StaggerItem>
-            ))}
-          </StaggerContainer>
-        </div>
-      </section>
 
       {/* CTA */}
       {!user && (
