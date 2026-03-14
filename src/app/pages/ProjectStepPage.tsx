@@ -11,9 +11,11 @@ import { CodeEditor } from '../components/CodeEditor';
 import { TestResults, type TestResult } from '../components/TestResults';
 import { DifficultyBadge } from '../components/DifficultyBadge';
 import { SplitPane } from '../components/SplitPane';
+import { useAuth } from '../context/AuthContext';
 
 export function ProjectStepPage() {
   const { projectId, stepId } = useParams<{ projectId: string; stepId: string }>();
+  const { user } = useAuth();
 
   const [step, setStep] = useState<ProjectStepDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -193,15 +195,16 @@ export function ProjectStepPage() {
 
             <div style={{ padding: '8px 12px', borderTop: '1px solid var(--go-border)', display: 'flex', gap: '8px', alignItems: 'center', background: 'var(--go-surface)', flexShrink: 0 }}>
               <button
-                onClick={handleSubmit} disabled={isRunning}
+                onClick={handleSubmit} disabled={isRunning || !user}
+                title={!user ? 'Войдите, чтобы отправить решение' : undefined}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 16px',
-                  borderRadius: '8px', background: isRunning ? 'var(--go-border-2)' : 'var(--go-cyan)',
-                  border: 'none', color: isRunning ? 'var(--go-muted)' : '#fff',
-                  fontSize: '12px', fontWeight: 700, cursor: isRunning ? 'not-allowed' : 'pointer', fontFamily: 'Manrope, sans-serif',
+                  borderRadius: '8px', background: (isRunning || !user) ? 'var(--go-border-2)' : 'var(--go-cyan)',
+                  border: 'none', color: (isRunning || !user) ? 'var(--go-muted)' : '#fff',
+                  fontSize: '12px', fontWeight: 700, cursor: (isRunning || !user) ? 'not-allowed' : 'pointer', fontFamily: 'Manrope, sans-serif',
                 }}
-                onMouseEnter={(e) => { if (!isRunning) e.currentTarget.style.background = 'var(--go-cyan-hover)'; }}
-                onMouseLeave={(e) => { if (!isRunning) e.currentTarget.style.background = 'var(--go-cyan)'; }}
+                onMouseEnter={(e) => { if (!isRunning && user) e.currentTarget.style.background = 'var(--go-cyan-hover)'; }}
+                onMouseLeave={(e) => { if (!isRunning && user) e.currentTarget.style.background = 'var(--go-cyan)'; }}
               >
                 <Play size={12} />
                 {isRunning ? 'Проверка...' : 'Запустить тесты'}

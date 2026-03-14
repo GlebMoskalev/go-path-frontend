@@ -157,6 +157,45 @@ export interface AnalysisResult {
   recommendation: string;
 }
 
+export interface StatsChapterItem {
+  slug: string;
+  title: string;
+  total: number;
+  completed?: number;
+  solved?: number;
+}
+
+export interface StatsProjectItem {
+  slug: string;
+  title: string;
+  total: number;
+  solved: number;
+}
+
+export interface TheoryStats {
+  total_lessons: number;
+  completed_lessons: number;
+  chapters: StatsChapterItem[];
+}
+
+export interface TasksStats {
+  total_tasks: number;
+  solved_tasks: number;
+  chapters: StatsChapterItem[];
+}
+
+export interface ProjectsStats {
+  total_steps: number;
+  solved_steps: number;
+  projects: StatsProjectItem[];
+}
+
+export interface UserStats {
+  theory: TheoryStats;
+  tasks: TasksStats;
+  projects: ProjectsStats;
+}
+
 // ---- API Functions ----
 
 // Auth
@@ -275,6 +314,11 @@ export function submitProjectStep(projectSlug: string, stepSlug: string, code: s
     `/api/projects/${encodeURIComponent(projectSlug)}/${encodeURIComponent(stepSlug)}/submit`,
     { method: 'POST', body: JSON.stringify({ code }) }
   );
+}
+
+// Stats
+export function fetchUserStats() {
+  return apiFetch<UserStats>('/api/users/stats');
 }
 
 // AI Analysis
