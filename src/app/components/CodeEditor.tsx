@@ -1,8 +1,7 @@
-import { useState, useRef, useCallback } from 'react';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { useState } from 'react';
+import Editor from '@monaco-editor/react';
 import { Copy, Check, RotateCcw } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import { editorDarkTheme, editorLightTheme } from './syntaxThemes';
 
 interface CodeEditorProps {
   value: string;
@@ -14,10 +13,7 @@ interface CodeEditorProps {
 
 export function CodeEditor({ value, onChange, defaultValue, language = 'go', height = '360px' }: CodeEditorProps) {
   const [copied, setCopied] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const editorWrapRef = useRef<HTMLDivElement>(null);
   const { resolved } = useTheme();
-  const theme = resolved === 'dark' ? editorDarkTheme : editorLightTheme;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(value);
@@ -29,126 +25,43 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
     if (defaultValue) onChange(defaultValue);
   };
 
-  const setCursor = (pos: number) => {
-    requestAnimationFrame(() => {
-      if (textareaRef.current) {
-        textareaRef.current.selectionStart = pos;
-        textareaRef.current.selectionEnd = pos;
-      }
+  const handleBeforeMount = (monaco: any) => {
+    monaco.editor.defineTheme('go-path-dark', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'comment', foreground: '64748b', fontStyle: 'italic' },
+        { token: 'keyword', foreground: 'c792ea' },
+        { token: 'string', foreground: '10B981' },
+        { token: 'number', foreground: 'F59E0B' },
+        { token: 'type', foreground: '00ADD8' },
+        { token: 'function', foreground: '00ADD8' },
+      ],
+      colors: {
+        'editor.background': '#0f172a',
+        'editor.foreground': '#e2e8f0',
+      },
+    });
+
+    monaco.editor.defineTheme('go-path-light', {
+      base: 'vs',
+      inherit: true,
+      rules: [
+        { token: 'comment', foreground: '8B95A5', fontStyle: 'italic' },
+        { token: 'keyword', foreground: '7C3AED' },
+        { token: 'string', foreground: '067D17' },
+        { token: 'number', foreground: '1750EB' },
+        { token: 'type', foreground: '0068A8' },
+        { token: 'function', foreground: '0068A8' },
+      ],
+      colors: {
+        'editor.background': '#f8fafc',
+        'editor.foreground': '#1E293B',
+      },
     });
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    const ta = e.currentTarget;
-    const start = ta.selectionStart;
-    const end = ta.selectionEnd;
-
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      if (e.shiftKey) {
-        const lineStart = value.lastIndexOf('\n', start - 1) + 1;
-        const line = value.substring(lineStart, start);
-        const stripped = line.replace(/^ {1,4}/, '');
-        const removed = line.length - stripped.length;
-        if (removed > 0) {
-          const newVal = value.substring(0, lineStart) + stripped + value.substring(start);
-          onChange(newVal);
-          setCursor(start - removed);
-        }
-      } else {
-        const newVal = value.substring(0, start) + '    ' + value.substring(end);
-        onChange(newVal);
-        setCursor(start + 4);
-      }
-      return;
-    }
-
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const lineStart = value.lastIndexOf('\n', start - 1) + 1;
-      const currentLine = value.substring(lineStart, start);
-      const indent = currentLine.match(/^(\s*)/)?.[1] || '';
-      const charBefore = value[start - 1];
-      const charAfter = value[start];
-
-      if (charBefore === '{' && charAfter === '}') {
-        const inner = '\n' + indent + '    ';
-        const closing = '\n' + indent;
-        const newVal = value.substring(0, start) + inner + closing + value.substring(start);
-        onChange(newVal);
-        setCursor(start + inner.length);
-      } else if (charBefore === '{' || charBefore === '(') {
-        const newIndent = indent + '    ';
-        const newVal = value.substring(0, start) + '\n' + newIndent + value.substring(end);
-        onChange(newVal);
-        setCursor(start + 1 + newIndent.length);
-      } else {
-        const newVal = value.substring(0, start) + '\n' + indent + value.substring(end);
-        onChange(newVal);
-        setCursor(start + 1 + indent.length);
-      }
-      return;
-    }
-
-    if (e.key === '}' || e.key === ')') {
-      const lineStart = value.lastIndexOf('\n', start - 1) + 1;
-      const beforeCursor = value.substring(lineStart, start);
-      if (/^\s+$/.test(beforeCursor) && beforeCursor.length >= 4) {
-        e.preventDefault();
-        const dedented = beforeCursor.substring(4);
-        const newVal = value.substring(0, lineStart) + dedented + e.key + value.substring(end);
-        onChange(newVal);
-        setCursor(lineStart + dedented.length + 1);
-        return;
-      }
-    }
-
-    const pairs: Record<string, string> = { '{': '}', '(': ')', '[': ']', '"': '"', "'": "'", '`': '`' };
-    if (pairs[e.key]) {
-      e.preventDefault();
-      const pair = pairs[e.key];
-      const newVal = value.substring(0, start) + e.key + pair + value.substring(end);
-      onChange(newVal);
-      setCursor(start + 1);
-      return;
-    }
-
-    if ((e.key === '}' || e.key === ')' || e.key === ']' || e.key === '"' || e.key === "'" || e.key === '`') && value[start] === e.key) {
-      e.preventDefault();
-      setCursor(start + 1);
-      return;
-    }
-
-    if (e.key === 'Backspace' && start === end && start > 0) {
-      const before = value[start - 1];
-      const after = value[start];
-      const autoPairs: Record<string, string> = { '{': '}', '(': ')', '[': ']', '"': '"', "'": "'", '`': '`' };
-      if (autoPairs[before] === after) {
-        e.preventDefault();
-        const newVal = value.substring(0, start - 1) + value.substring(start + 1);
-        onChange(newVal);
-        setCursor(start - 1);
-        return;
-      }
-    }
-  };
-
-  const syncScroll = useCallback(() => {
-    const textarea = textareaRef.current;
-    const wrapper = editorWrapRef.current;
-    if (!textarea || !wrapper) return;
-    const highlight = wrapper.querySelector('.highlight-layer') as HTMLElement;
-    const lineNums = wrapper.querySelector('.line-numbers') as HTMLElement;
-    if (highlight) {
-      highlight.scrollTop = textarea.scrollTop;
-      highlight.scrollLeft = textarea.scrollLeft;
-    }
-    if (lineNums) {
-      lineNums.scrollTop = textarea.scrollTop;
-    }
-  }, []);
-
-  const lineCount = value.split('\n').length;
+  const monacoTheme = resolved === 'dark' ? 'go-path-dark' : 'go-path-light';
 
   return (
     <div
@@ -225,109 +138,36 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
       </div>
 
       <div
-        ref={editorWrapRef}
         style={{
-          display: 'flex',
           flex: 1,
           overflow: 'hidden',
-          position: 'relative',
+          minHeight: 0,
         }}
       >
-        <div
-          className="line-numbers"
-          style={{
-            padding: '16px 0',
-            minWidth: '44px',
-            textAlign: 'right',
-            paddingRight: '12px',
-            paddingLeft: '8px',
-            background: 'var(--go-code-bg)',
-            borderRight: '1px solid var(--go-code-border)',
-            userSelect: 'none',
-            flexShrink: 0,
-            overflow: 'hidden',
+        <Editor
+          height="100%"
+          language={language}
+          theme={monacoTheme}
+          value={value}
+          onChange={(val) => onChange(val ?? '')}
+          beforeMount={handleBeforeMount}
+          loading={null}
+          options={{
+            minimap: { enabled: false },
+            fontSize: 13.5,
+            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+            lineHeight: 1.65,
+            tabSize: 4,
+            insertSpaces: true,
+            padding: { top: 16, bottom: 16 },
+            scrollBeyondLastLine: false,
+            lineNumbers: 'on',
+            glyphMargin: false,
+            folding: false,
+            lineDecorationsWidth: 10,
+            renderLineHighlight: 'line',
           }}
-        >
-          {Array.from({ length: Math.max(lineCount, 1) }, (_, i) => (
-            <div
-              key={i}
-              style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: '13.5px',
-                lineHeight: '1.65',
-                color: 'var(--go-code-line-num)',
-              }}
-            >
-              {i + 1}
-            </div>
-          ))}
-        </div>
-
-        <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-          <div
-            className="highlight-layer"
-            aria-hidden="true"
-            style={{
-              position: 'absolute',
-              top: 0, left: 0, right: 0, bottom: 0,
-              padding: '16px',
-              overflow: 'hidden',
-              pointerEvents: 'none',
-            }}
-          >
-            <SyntaxHighlighter
-              language={language}
-              style={theme as any}
-              customStyle={{
-                margin: 0, padding: 0, background: 'transparent',
-                border: 'none', overflow: 'visible',
-              }}
-              codeTagProps={{
-                style: {
-                  fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-                  fontSize: '13.5px',
-                  lineHeight: '1.65',
-                  background: 'transparent',
-                },
-              }}
-              showLineNumbers={false}
-              wrapLongLines={false}
-            >
-              {value + '\n'}
-            </SyntaxHighlighter>
-          </div>
-
-          <textarea
-            ref={textareaRef}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onScroll={syncScroll}
-            spellCheck={false}
-            autoCapitalize="none"
-            autoComplete="off"
-            style={{
-              position: 'relative',
-              zIndex: 1,
-              width: '100%',
-              height: '100%',
-              background: 'transparent',
-              border: 'none',
-              outline: 'none',
-              resize: 'none',
-              color: 'transparent',
-              fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-              fontSize: '13.5px',
-              lineHeight: '1.65',
-              padding: '16px',
-              caretColor: 'var(--go-cyan)',
-              whiteSpace: 'pre',
-              overflowWrap: 'normal',
-              wordBreak: 'normal',
-              tabSize: 4,
-            }}
-          />
-        </div>
+        />
       </div>
     </div>
   );
