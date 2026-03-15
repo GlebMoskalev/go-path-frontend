@@ -286,7 +286,7 @@ export function TaskEditorPage() {
 
             {/* Code editor */}
             <div style={{ flex: 1, overflow: 'hidden', padding: '8px 8px 0' }}>
-              <CodeEditor value={code} onChange={setCode} defaultValue={task.template} height="100%" />
+              <CodeEditor value={code} onChange={setCode} defaultValue={task.template} height="100%" completions={task.completions} />
             </div>
 
             {/* Submit bar */}

@@ -89,6 +89,7 @@ export interface TaskDetail {
   chapter_slug: string;
   solved: boolean | null;
   submissions?: TaskSubmission[];
+  completions?: Completion[];
 }
 
 export interface SubmitResult {
@@ -151,10 +152,24 @@ export interface ProjectStepDetail {
   order: number;
   project_slug: string;
   solved: boolean | null;
+  completions?: Completion[];
 }
 
 export interface AnalysisResult {
   recommendation: string;
+}
+
+export interface CompletionSymbol {
+  name: string;
+  kind: string;
+  detail: string;
+  doc: string;
+}
+
+export interface Completion {
+  name: string;
+  doc: string;
+  symbols: CompletionSymbol[];
 }
 
 export interface StatsChapterItem {

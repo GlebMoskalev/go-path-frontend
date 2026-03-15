@@ -190,7 +190,7 @@ export function ProjectStepPage() {
           {/* Top: editor + submit */}
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
             <div style={{ flex: 1, overflow: 'hidden', padding: '8px 8px 0' }}>
-              <CodeEditor value={code} onChange={setCode} defaultValue={step.template} height="100%" />
+              <CodeEditor value={code} onChange={setCode} defaultValue={step.template} height="100%" completions={step.completions} />
             </div>
 
             <div style={{ padding: '8px 12px', borderTop: '1px solid var(--go-border)', display: 'flex', gap: '8px', alignItems: 'center', background: 'var(--go-surface)', flexShrink: 0 }}>

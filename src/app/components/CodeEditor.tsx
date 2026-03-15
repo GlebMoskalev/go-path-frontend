@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import Editor from '@monaco-editor/react';
+import { useState, useRef, useEffect } from 'react';
+import Editor, { type Monaco } from '@monaco-editor/react';
 import { Copy, Check, RotateCcw } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import type { Completion } from '../api';
 
 interface CodeEditorProps {
   value: string;
@@ -9,11 +10,15 @@ interface CodeEditorProps {
   defaultValue?: string;
   language?: string;
   height?: string;
+  completions?: Completion[];
 }
 
-export function CodeEditor({ value, onChange, defaultValue, language = 'go', height = '360px' }: CodeEditorProps) {
+export function CodeEditor({ value, onChange, defaultValue, language = 'go', height = '360px', completions }: CodeEditorProps) {
   const [copied, setCopied] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const { resolved } = useTheme();
+  const monacoRef = useRef<Monaco | null>(null);
+  const disposableRef = useRef<{ dispose: () => void } | null>(null);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(value);
@@ -25,7 +30,113 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
     if (defaultValue) onChange(defaultValue);
   };
 
-  const handleBeforeMount = (monaco: any) => {
+  useEffect(() => {
+    if (!isMounted || !monacoRef.current || !completions || completions.length === 0) return;
+
+    const monaco = monacoRef.current;
+    const pkgList = completions;
+
+    if (disposableRef.current) {
+      disposableRef.current.dispose();
+    }
+
+    disposableRef.current = monaco.languages.registerCompletionItemProvider('go', {
+      triggerCharacters: ['.'],
+      provideCompletionItems: (model, position) => {
+        const textUntilPosition = model.getValueInRange({
+          startLineNumber: position.lineNumber,
+          startColumn: 1,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column,
+        });
+
+        const match = textUntilPosition.match(/(\w+)\.\s*$/);
+        if (!match) {
+          const word = model.getWordUntilPosition(position);
+          const range = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn,
+          };
+
+          const suggestions = pkgList.map((pkg) => ({
+            label: pkg.name,
+            kind: monaco.languages.CompletionItemKind.Module,
+            insertText: pkg.name,
+            detail: pkg.doc,
+            documentation: pkg.doc,
+            range,
+          }));
+
+          return { suggestions };
+        }
+
+        const pkgName = match[1];
+        const suffix = '/' + pkgName;
+        let pkg: Completion | undefined;
+        for (let i = 0; i < pkgList.length; i++) {
+          const name = pkgList[i].name;
+          if (name === pkgName || name.indexOf(suffix) === name.length - suffix.length) {
+            pkg = pkgList[i];
+            break;
+          }
+        }
+
+        if (!pkg) {
+          return { suggestions: [] };
+        }
+
+        const word = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn,
+        };
+
+        const suggestions = pkg.symbols.map((sym) => {
+          let kind: number;
+          switch (sym.kind) {
+            case 'function':
+              kind = monaco.languages.CompletionItemKind.Function;
+              break;
+            case 'type':
+              kind = monaco.languages.CompletionItemKind.Class;
+              break;
+            case 'constant':
+              kind = monaco.languages.CompletionItemKind.Constant;
+              break;
+            case 'variable':
+              kind = monaco.languages.CompletionItemKind.Variable;
+              break;
+            default:
+              kind = monaco.languages.CompletionItemKind.Property;
+          }
+
+          return {
+            label: sym.name,
+            kind,
+            insertText: sym.name,
+            detail: sym.detail,
+            documentation: sym.doc,
+            range,
+          };
+        });
+
+        return { suggestions };
+      },
+    });
+
+    return () => {
+      if (disposableRef.current) {
+        disposableRef.current.dispose();
+        disposableRef.current = null;
+      }
+    };
+  }, [isMounted, completions]);
+
+  const handleBeforeMount = (monaco: Monaco) => {
     monaco.editor.defineTheme('go-path-dark', {
       base: 'vs-dark',
       inherit: true,
@@ -59,6 +170,11 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
         'editor.foreground': '#1E293B',
       },
     });
+  };
+
+  const handleMount = (_editor: unknown, monaco: Monaco) => {
+    monacoRef.current = monaco;
+    setIsMounted(true);
   };
 
   const monacoTheme = resolved === 'dark' ? 'go-path-dark' : 'go-path-light';
@@ -151,6 +267,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
           value={value}
           onChange={(val) => onChange(val ?? '')}
           beforeMount={handleBeforeMount}
+          onMount={handleMount}
           loading={null}
           options={{
             minimap: { enabled: false },
