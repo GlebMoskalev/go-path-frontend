@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle2, XCircle, ChevronRight, BookOpen } from 'lucide-react';
+import { CheckCircle2, XCircle, ChevronRight, BookOpen, Minus, Plus } from 'lucide-react';
 import {
   fetchQuizChapters,
   fetchQuizQuestions,
@@ -341,28 +341,99 @@ export function QuizPage() {
                   Доступно: {totalQuestions}
                 </div>
               </div>
-              <input
-                type="number"
-                value={limit}
-                onChange={(e) => setLimit(Math.max(1, parseInt(e.target.value) || 1))}
-                min={1}
-                max={totalQuestions || 100}
-                style={{
-                  width: '80px',
-                  padding: '8px 12px',
-                  background: 'var(--go-bg)',
-                  border: '1px solid var(--go-border-2)',
-                  borderRadius: '10px',
-                  color: 'var(--go-text)',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  textAlign: 'center',
-                  outline: 'none',
-                  fontFamily: 'Manrope, sans-serif',
-                }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--go-cyan)')}
-                onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--go-border-2)')}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <button
+                  onClick={() => setLimit((prev) => Math.max(1, prev - 1))}
+                  disabled={limit <= 1}
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--go-border-2)',
+                    background: 'var(--go-surface)',
+                    color: limit <= 1 ? 'var(--go-subtle)' : 'var(--go-muted)',
+                    cursor: limit <= 1 ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (limit > 1) {
+                      e.currentTarget.style.borderColor = 'var(--go-cyan)';
+                      e.currentTarget.style.color = 'var(--go-cyan)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--go-border-2)';
+                    e.currentTarget.style.color = limit <= 1 ? 'var(--go-subtle)' : 'var(--go-muted)';
+                  }}
+                >
+                  <Minus size={14} />
+                </button>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={limit}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    if (val === '') {
+                      setLimit(1);
+                    } else {
+                      const num = parseInt(val, 10);
+                      const maxVal = totalQuestions > 0 ? totalQuestions : 100;
+                      setLimit(Math.min(Math.max(1, num), maxVal));
+                    }
+                  }}
+                  style={{
+                    width: '56px',
+                    padding: '6px 8px',
+                    background: 'var(--go-surface)',
+                    border: '1px solid var(--go-border-2)',
+                    borderRadius: '8px',
+                    color: 'var(--go-text)',
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    textAlign: 'center',
+                    outline: 'none',
+                    fontFamily: 'Manrope, sans-serif',
+                  }}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--go-cyan)')}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--go-border-2)')}
+                />
+                <button
+                  onClick={() => {
+                    const maxVal = totalQuestions > 0 ? totalQuestions : 100;
+                    setLimit((prev) => Math.min(maxVal, prev + 1));
+                  }}
+                  disabled={totalQuestions > 0 && limit >= totalQuestions}
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--go-border-2)',
+                    background: 'var(--go-surface)',
+                    color: totalQuestions > 0 && limit >= totalQuestions ? 'var(--go-subtle)' : 'var(--go-muted)',
+                    cursor: totalQuestions > 0 && limit >= totalQuestions ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!(totalQuestions > 0 && limit >= totalQuestions)) {
+                      e.currentTarget.style.borderColor = 'var(--go-cyan)';
+                      e.currentTarget.style.color = 'var(--go-cyan)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--go-border-2)';
+                    e.currentTarget.style.color = totalQuestions > 0 && limit >= totalQuestions ? 'var(--go-subtle)' : 'var(--go-muted)';
+                  }}
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
             </div>
 
             <button
