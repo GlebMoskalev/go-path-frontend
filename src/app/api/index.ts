@@ -369,3 +369,10 @@ export function formatCode(code: string) {
     body: JSON.stringify({ code }),
   });
 }
+
+export function formatProjectCode(projectSlug: string, stepSlug: string, code: string) {
+  return apiFetch<FormatResult>(
+    `/api/format/${encodeURIComponent(projectSlug)}/${encodeURIComponent(stepSlug)}`,
+    { method: 'POST', body: JSON.stringify({ code }) }
+  );
+}

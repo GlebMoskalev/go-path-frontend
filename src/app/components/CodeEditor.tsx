@@ -3,7 +3,7 @@ import Editor, { type Monaco } from '@monaco-editor/react';
 import { Copy, Check, RotateCcw, AlignLeft } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import type { Completion, CompletionSymbol } from '../api';
-import { formatCode } from '../api';
+import { formatCode, formatProjectCode } from '../api';
 
 interface CodeEditorProps {
   value: string;
@@ -12,9 +12,11 @@ interface CodeEditorProps {
   language?: string;
   height?: string;
   completions?: Completion[];
+  projectSlug?: string;
+  stepSlug?: string;
 }
 
-export function CodeEditor({ value, onChange, defaultValue, language = 'go', height = '360px', completions }: CodeEditorProps) {
+export function CodeEditor({ value, onChange, defaultValue, language = 'go', height = '360px', completions, projectSlug, stepSlug }: CodeEditorProps) {
   const [copied, setCopied] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [isFormatting, setIsFormatting] = useState(false);
@@ -35,7 +37,12 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
   const handleFormat = () => {
     if (isFormatting || language !== 'go') return;
     setIsFormatting(true);
-    formatCode(value)
+
+    const formatPromise = projectSlug && stepSlug
+      ? formatProjectCode(projectSlug, stepSlug, value)
+      : formatCode(value);
+
+    formatPromise
       .then((result) => {
         onChange(result.code);
         setIsFormatting(false);
@@ -53,6 +60,11 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
 
     disposablesRef.current.forEach((d) => d.dispose());
     disposablesRef.current = [];
+
+    const getShortName = (fullName: string): string => {
+      const slashIdx = fullName.lastIndexOf('/');
+      return slashIdx >= 0 ? fullName.substring(slashIdx + 1) : fullName;
+    };
 
     const findPackage = (name: string): Completion | undefined => {
       const suffix = '/' + name;
@@ -94,14 +106,17 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
             endColumn: word.endColumn,
           };
 
-          const suggestions = pkgList.map((pkg) => ({
-            label: pkg.name,
-            kind: monaco.languages.CompletionItemKind.Module,
-            insertText: pkg.name,
-            detail: pkg.doc,
-            documentation: pkg.doc,
-            range,
-          }));
+          const suggestions = pkgList.map((pkg) => {
+            const shortName = getShortName(pkg.name);
+            return {
+              label: shortName,
+              kind: monaco.languages.CompletionItemKind.Module,
+              insertText: shortName,
+              detail: pkg.name !== shortName ? pkg.name : pkg.doc,
+              documentation: pkg.doc,
+              range,
+            };
+          });
 
           return { suggestions };
         }
@@ -201,9 +216,14 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
 
         const pkg = findPackage(word.word);
         if (pkg) {
+          const shortName = getShortName(pkg.name);
           const symbolsList = pkg.symbols
             .map((s) => `- \`${s.name}\` (${s.kind})`)
             .join('\n');
+
+          const title = pkg.name !== shortName 
+            ? `**${shortName}** (\`${pkg.name}\`)` 
+            : `**${shortName}**`;
 
           return {
             range: {
@@ -214,7 +234,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
             },
             contents: [
               {
-                value: `**${pkg.name}**\n\n${pkg.doc}\n\n**Exports:**\n${symbolsList}`,
+                value: `${title}\n\n${pkg.doc}\n\n**Exports:**\n${symbolsList}`,
               },
             ],
           };
