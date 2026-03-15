@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import Editor, { type Monaco } from '@monaco-editor/react';
-import { Copy, Check, RotateCcw } from 'lucide-react';
+import { Copy, Check, RotateCcw, AlignLeft } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import type { Completion, CompletionSymbol } from '../api';
+import { formatCode } from '../api';
 
 interface CodeEditorProps {
   value: string;
@@ -16,6 +17,7 @@ interface CodeEditorProps {
 export function CodeEditor({ value, onChange, defaultValue, language = 'go', height = '360px', completions }: CodeEditorProps) {
   const [copied, setCopied] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [isFormatting, setIsFormatting] = useState(false);
   const { resolved } = useTheme();
   const monacoRef = useRef<Monaco | null>(null);
   const disposablesRef = useRef<Array<{ dispose: () => void }>>([]);
@@ -28,6 +30,19 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
 
   const handleReset = () => {
     if (defaultValue) onChange(defaultValue);
+  };
+
+  const handleFormat = () => {
+    if (isFormatting || language !== 'go') return;
+    setIsFormatting(true);
+    formatCode(value)
+      .then((result) => {
+        onChange(result.code);
+        setIsFormatting(false);
+      })
+      .catch(() => {
+        setIsFormatting(false);
+      });
   };
 
   useEffect(() => {
@@ -292,6 +307,29 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
           </span>
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
+          {language === 'go' && (
+            <button
+              onClick={handleFormat}
+              disabled={isFormatting}
+              style={{
+                background: 'none',
+                border: '1px solid var(--go-code-border)',
+                borderRadius: '6px',
+                color: 'var(--go-code-muted)',
+                cursor: isFormatting ? 'not-allowed' : 'pointer',
+                padding: '3px 8px',
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                opacity: isFormatting ? 0.5 : 1,
+              }}
+              title="Форматировать (gofmt)"
+            >
+              <AlignLeft size={12} />
+              {isFormatting ? 'Форматирование...' : 'Формат'}
+            </button>
+          )}
           {defaultValue && (
             <button
               onClick={handleReset}

@@ -357,3 +357,15 @@ export function analyzeProjectStep(projectSlug: string, stepSlug: string, code: 
     { method: 'POST', body: JSON.stringify({ code }) }
   );
 }
+
+// Format
+export interface FormatResult {
+  code: string;
+}
+
+export function formatCode(code: string) {
+  return apiFetch<FormatResult>('/api/format', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  });
+}
