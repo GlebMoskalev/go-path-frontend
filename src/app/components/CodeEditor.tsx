@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import Editor, { type Monaco } from '@monaco-editor/react';
 import { Copy, Check, RotateCcw } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import type { Completion } from '../api';
+import type { Completion, CompletionSymbol } from '../api';
 
 interface CodeEditorProps {
   value: string;
@@ -18,7 +18,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
   const [isMounted, setIsMounted] = useState(false);
   const { resolved } = useTheme();
   const monacoRef = useRef<Monaco | null>(null);
-  const disposableRef = useRef<{ dispose: () => void } | null>(null);
+  const disposablesRef = useRef<Array<{ dispose: () => void }>>([]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(value);
@@ -36,11 +36,30 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
     const monaco = monacoRef.current;
     const pkgList = completions;
 
-    if (disposableRef.current) {
-      disposableRef.current.dispose();
-    }
+    disposablesRef.current.forEach((d) => d.dispose());
+    disposablesRef.current = [];
 
-    disposableRef.current = monaco.languages.registerCompletionItemProvider('go', {
+    const findPackage = (name: string): Completion | undefined => {
+      const suffix = '/' + name;
+      for (let i = 0; i < pkgList.length; i++) {
+        const pkgName = pkgList[i].name;
+        if (pkgName === name || pkgName.indexOf(suffix) === pkgName.length - suffix.length) {
+          return pkgList[i];
+        }
+      }
+      return undefined;
+    };
+
+    const findSymbol = (pkg: Completion, symName: string): CompletionSymbol | undefined => {
+      for (let i = 0; i < pkg.symbols.length; i++) {
+        if (pkg.symbols[i].name === symName) {
+          return pkg.symbols[i];
+        }
+      }
+      return undefined;
+    };
+
+    const completionProvider = monaco.languages.registerCompletionItemProvider('go', {
       triggerCharacters: ['.'],
       provideCompletionItems: (model, position) => {
         const textUntilPosition = model.getValueInRange({
@@ -73,15 +92,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
         }
 
         const pkgName = match[1];
-        const suffix = '/' + pkgName;
-        let pkg: Completion | undefined;
-        for (let i = 0; i < pkgList.length; i++) {
-          const name = pkgList[i].name;
-          if (name === pkgName || name.indexOf(suffix) === name.length - suffix.length) {
-            pkg = pkgList[i];
-            break;
-          }
-        }
+        const pkg = findPackage(pkgName);
 
         if (!pkg) {
           return { suggestions: [] };
@@ -114,12 +125,20 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
               kind = monaco.languages.CompletionItemKind.Property;
           }
 
+          let documentation = sym.doc;
+          if (sym.fields && sym.fields.length > 0) {
+            const fieldsDoc = sym.fields
+              .map((f) => `  ${f.name} ${f.type}  // ${f.doc}`)
+              .join('\n');
+            documentation = `${sym.doc}\n\nFields:\n${fieldsDoc}`;
+          }
+
           return {
             label: sym.name,
             kind,
             insertText: sym.name,
             detail: sym.detail,
-            documentation: sym.doc,
+            documentation,
             range,
           };
         });
@@ -128,11 +147,73 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
       },
     });
 
+    const hoverProvider = monaco.languages.registerHoverProvider('go', {
+      provideHover: (model, position) => {
+        const line = model.getLineContent(position.lineNumber);
+        const word = model.getWordAtPosition(position);
+        if (!word) return null;
+
+        const beforeWord = line.substring(0, word.startColumn - 1);
+        const dotMatch = beforeWord.match(/(\w+)\.\s*$/);
+
+        if (dotMatch) {
+          const pkgName = dotMatch[1];
+          const pkg = findPackage(pkgName);
+          if (!pkg) return null;
+
+          const sym = findSymbol(pkg, word.word);
+          if (!sym) return null;
+
+          let contents = `**${sym.detail}**\n\n${sym.doc}`;
+
+          if (sym.fields && sym.fields.length > 0) {
+            contents += '\n\n**Fields/Methods:**\n';
+            contents += sym.fields
+              .map((f) => `- \`${f.name}\` *${f.type}* — ${f.doc}`)
+              .join('\n');
+          }
+
+          return {
+            range: {
+              startLineNumber: position.lineNumber,
+              startColumn: word.startColumn,
+              endLineNumber: position.lineNumber,
+              endColumn: word.endColumn,
+            },
+            contents: [{ value: contents }],
+          };
+        }
+
+        const pkg = findPackage(word.word);
+        if (pkg) {
+          const symbolsList = pkg.symbols
+            .map((s) => `- \`${s.name}\` (${s.kind})`)
+            .join('\n');
+
+          return {
+            range: {
+              startLineNumber: position.lineNumber,
+              startColumn: word.startColumn,
+              endLineNumber: position.lineNumber,
+              endColumn: word.endColumn,
+            },
+            contents: [
+              {
+                value: `**${pkg.name}**\n\n${pkg.doc}\n\n**Exports:**\n${symbolsList}`,
+              },
+            ],
+          };
+        }
+
+        return null;
+      },
+    });
+
+    disposablesRef.current.push(completionProvider, hoverProvider);
+
     return () => {
-      if (disposableRef.current) {
-        disposableRef.current.dispose();
-        disposableRef.current = null;
-      }
+      disposablesRef.current.forEach((d) => d.dispose());
+      disposablesRef.current = [];
     };
   }, [isMounted, completions]);
 

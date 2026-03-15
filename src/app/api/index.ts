@@ -159,11 +159,18 @@ export interface AnalysisResult {
   recommendation: string;
 }
 
+export interface CompletionField {
+  name: string;
+  type: string;
+  doc: string;
+}
+
 export interface CompletionSymbol {
   name: string;
   kind: string;
   detail: string;
   doc: string;
+  fields?: CompletionField[];
 }
 
 export interface Completion {
