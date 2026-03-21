@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import Editor, { type Monaco } from '@monaco-editor/react';
-import { Copy, Check, RotateCcw, AlignLeft } from 'lucide-react';
+import { Copy, Check, RotateCcw, AlignLeft, HelpCircle, X } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import type { Completion, CompletionSymbol } from '../api';
 import { formatCode, formatProjectCode } from '../api';
@@ -20,9 +20,13 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
   const [copied, setCopied] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [isFormatting, setIsFormatting] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const helpBtnRef = useRef<HTMLButtonElement>(null);
   const { resolved } = useTheme();
   const monacoRef = useRef<Monaco | null>(null);
   const disposablesRef = useRef<Array<{ dispose: () => void }>>([]);
+  const completionsRef = useRef(completions);
+  completionsRef.current = completions;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(value);
@@ -96,7 +100,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
           endColumn: position.column,
         });
 
-        const match = textUntilPosition.match(/(\w+)\.\s*$/);
+        const match = textUntilPosition.match(/(\w+)\.\w*$/);
         if (!match) {
           const word = model.getWordUntilPosition(position);
           const range = {
@@ -252,6 +256,318 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
     };
   }, [isMounted, completions]);
 
+  useEffect(() => {
+    if (!isMounted || !monacoRef.current) return;
+    const monaco = monacoRef.current;
+
+    const GO_BUILTINS = [
+      { label: 'append', kind: monaco.languages.CompletionItemKind.Function, detail: 'func append(slice []Type, elems ...Type) []Type' },
+      { label: 'len', kind: monaco.languages.CompletionItemKind.Function, detail: 'func len(v Type) int' },
+      { label: 'cap', kind: monaco.languages.CompletionItemKind.Function, detail: 'func cap(v Type) int' },
+      { label: 'make', kind: monaco.languages.CompletionItemKind.Function, detail: 'func make(t Type, size ...int) Type' },
+      { label: 'new', kind: monaco.languages.CompletionItemKind.Function, detail: 'func new(Type) *Type' },
+      { label: 'copy', kind: monaco.languages.CompletionItemKind.Function, detail: 'func copy(dst, src []Type) int' },
+      { label: 'delete', kind: monaco.languages.CompletionItemKind.Function, detail: 'func delete(m map[K]V, key K)' },
+      { label: 'close', kind: monaco.languages.CompletionItemKind.Function, detail: 'func close(c chan<- Type)' },
+      { label: 'panic', kind: monaco.languages.CompletionItemKind.Function, detail: 'func panic(v any)' },
+      { label: 'recover', kind: monaco.languages.CompletionItemKind.Function, detail: 'func recover() any' },
+      { label: 'println', kind: monaco.languages.CompletionItemKind.Function, detail: 'func println(args ...Type)' },
+      { label: 'print', kind: monaco.languages.CompletionItemKind.Function, detail: 'func print(args ...Type)' },
+      { label: 'nil', kind: monaco.languages.CompletionItemKind.Constant, detail: 'nil' },
+      { label: 'true', kind: monaco.languages.CompletionItemKind.Constant, detail: 'bool' },
+      { label: 'false', kind: monaco.languages.CompletionItemKind.Constant, detail: 'bool' },
+      { label: 'iota', kind: monaco.languages.CompletionItemKind.Constant, detail: 'const iota' },
+      { label: 'error', kind: monaco.languages.CompletionItemKind.Interface, detail: 'interface{ Error() string }' },
+      { label: 'string', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'string' },
+      { label: 'int', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'int' },
+      { label: 'int64', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'int64' },
+      { label: 'int32', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'int32' },
+      { label: 'float64', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'float64' },
+      { label: 'float32', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'float32' },
+      { label: 'bool', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'bool' },
+      { label: 'byte', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'alias for uint8' },
+      { label: 'rune', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'alias for int32' },
+      { label: 'any', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'alias for interface{}' },
+      { label: 'uint', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'uint' },
+      { label: 'struct', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'struct type' },
+      { label: 'interface', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'interface type' },
+      { label: 'map', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'map type' },
+      { label: 'chan', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'channel type' },
+      { label: 'func', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'function' },
+      { label: 'return', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'return statement' },
+      { label: 'if', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'if statement' },
+      { label: 'else', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'else clause' },
+      { label: 'for', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'for loop' },
+      { label: 'range', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'range clause' },
+      { label: 'switch', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'switch statement' },
+      { label: 'case', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'case clause' },
+      { label: 'default', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'default clause' },
+      { label: 'select', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'select statement' },
+      { label: 'defer', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'defer statement' },
+      { label: 'go', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'goroutine' },
+      { label: 'var', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'variable declaration' },
+      { label: 'const', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'constant declaration' },
+      { label: 'type', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'type declaration' },
+      { label: 'package', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'package declaration' },
+      { label: 'import', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'import declaration' },
+      { label: 'break', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'break statement' },
+      { label: 'continue', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'continue statement' },
+      { label: 'fallthrough', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'fallthrough statement' },
+      { label: 'goto', kind: monaco.languages.CompletionItemKind.Keyword, detail: 'goto statement' },
+    ];
+
+    const GO_SNIPPETS = [
+      { label: 'iferr', insert: 'if err != nil {\n\t${1:return err}\n}', detail: 'if err != nil { ... }' },
+      { label: 'ifelse', insert: 'if ${1:condition} {\n\t$2\n} else {\n\t$0\n}', detail: 'if ... else ...' },
+      { label: 'fori', insert: 'for ${1:i} := ${2:0}; ${1:i} < ${3:n}; ${1:i}++ {\n\t$0\n}', detail: 'for i := 0; i < n; i++ { }' },
+      { label: 'forr', insert: 'for ${1:_}, ${2:v} := range ${3:slice} {\n\t$0\n}', detail: 'for _, v := range ... { }' },
+      { label: 'switchcase', insert: 'switch ${1:expr} {\ncase ${2:val}:\n\t$0\ndefault:\n}', detail: 'switch ... case ...' },
+      { label: 'gofunc', insert: 'go func() {\n\t$0\n}()', detail: 'go func() { }()' },
+      { label: 'deferfunc', insert: 'defer func() {\n\t$0\n}()', detail: 'defer func() { }()' },
+    ];
+
+    interface StructInfo { name: string; fields: { name: string; type: string }[] }
+
+    function parseStructs(code: string): StructInfo[] {
+      const structs: StructInfo[] = [];
+      const re = /type\s+(\w+)\s+struct\s*\{([^}]*)\}/g;
+      let m;
+      while ((m = re.exec(code)) !== null) {
+        const fields: { name: string; type: string }[] = [];
+        for (const line of m[2].split('\n')) {
+          const t = line.trim();
+          if (!t || t.startsWith('//')) continue;
+          const fm = t.match(/^(\w+)\s+([\S]+)/);
+          if (fm) fields.push({ name: fm[1], type: fm[2] });
+        }
+        structs.push({ name: m[1], fields });
+      }
+      return structs;
+    }
+
+    function parseFileSymbols(code: string) {
+      const syms: { name: string; kind: number; detail: string }[] = [];
+      const seen = new Set<string>();
+      const add = (n: string, k: number, d: string) => { if (!seen.has(n) && n !== '_') { seen.add(n); syms.push({ name: n, kind: k, detail: d }); } };
+      let m;
+      const typeRe = /type\s+(\w+)\s+/g;
+      while ((m = typeRe.exec(code)) !== null) add(m[1], monaco.languages.CompletionItemKind.Struct, `type ${m[1]}`);
+      const funcRe = /func\s+(?:\([^)]*\)\s+)?(\w+)\s*\(/g;
+      while ((m = funcRe.exec(code)) !== null) if (m[1] !== 'main') add(m[1], monaco.languages.CompletionItemKind.Function, `func ${m[1]}(...)`);
+      const constBlockRe = /(const|var)\s*\(\s*([\s\S]*?)\s*\)/g;
+      while ((m = constBlockRe.exec(code)) !== null) {
+        const kind = m[1] === 'const' ? monaco.languages.CompletionItemKind.Constant : monaco.languages.CompletionItemKind.Variable;
+        for (const line of m[2].split('\n')) { const lm = line.trim().match(/^(\w+)/); if (lm) add(lm[1], kind, `${m[1]} ${lm[1]}`); }
+      }
+      const constRe = /^const\s+(\w+)/gm;
+      while ((m = constRe.exec(code)) !== null) add(m[1], monaco.languages.CompletionItemKind.Constant, `const ${m[1]}`);
+      const varRe = /^var\s+(\w+)/gm;
+      while ((m = varRe.exec(code)) !== null) add(m[1], monaco.languages.CompletionItemKind.Variable, `var ${m[1]}`);
+      return syms;
+    }
+
+    function parseParams(str: string): { name: string; type: string }[] {
+      if (!str.trim()) return [];
+      const parts = str.split(',').map(s => s.trim());
+      const parsed: { name: string; type: string }[] = [];
+      for (const p of parts) {
+        const m = p.match(/^(\w+)\s+([\S].*)$/);
+        parsed.push(m ? { name: m[1], type: m[2] } : { name: p, type: '' });
+      }
+      for (let i = parsed.length - 2; i >= 0; i--) {
+        if (!parsed[i].type && parsed[i + 1].type) parsed[i].type = parsed[i + 1].type;
+      }
+      return parsed.filter(p => p.name && p.name !== '_');
+    }
+
+    function findEnclosingFunc(code: string, offset: number) {
+      let depth = 0;
+      for (let i = offset - 1; i >= 0; i--) {
+        if (code[i] === '}') { depth++; continue; }
+        if (code[i] !== '{') continue;
+        if (depth > 0) { depth--; continue; }
+        const before = code.substring(Math.max(0, i - 500), i);
+        const fm = before.match(/func\s+(?:\(\s*(\w+)\s+(\*?[\w.]+)\s*\)\s+)?(\w+)\s*\(([^)]*)\)[\s\S]*?$/);
+        if (fm) {
+          return {
+            receiver: fm[1] ? { name: fm[1], type: fm[2].replace(/^\*/, '') } : undefined,
+            params: parseParams(fm[4]),
+            bodyCode: code.substring(i + 1, offset),
+          };
+        }
+      }
+      return null;
+    }
+
+    function parseLocalVars(bodyCode: string): { name: string; type: string }[] {
+      const vars: { name: string; type: string }[] = [];
+      const seen = new Set<string>();
+      let m;
+
+      const shortRe = /([\w][\w\s,]*?)\s*:=/g;
+      while ((m = shortRe.exec(bodyCode)) !== null) {
+        const names = m[1].split(',').map(n => n.trim()).filter(Boolean);
+        const rhs = bodyCode.substring(m.index + m[0].length).trimStart();
+        const tm = rhs.match(/^&?([\w][\w.]*)\s*[\{(]/);
+        for (const name of names) {
+          if (name !== '_' && !seen.has(name)) {
+            seen.add(name);
+            vars.push({ name, type: tm ? tm[1] : '' });
+          }
+        }
+      }
+
+      const varRe = /var\s+(\w+)\s+([\S]+)/g;
+      while ((m = varRe.exec(bodyCode)) !== null) {
+        if (m[1] !== '_' && !seen.has(m[1])) { seen.add(m[1]); vars.push({ name: m[1], type: m[2].replace(/^\*/, '') }); }
+      }
+
+      const rangeRe = /for\s+(\w+)\s*(?:,\s*(\w+))?\s*:=\s*range/g;
+      while ((m = rangeRe.exec(bodyCode)) !== null) {
+        for (const n of [m[1], m[2]]) {
+          if (n && n !== '_' && !seen.has(n)) { seen.add(n); vars.push({ name: n, type: '' }); }
+        }
+      }
+
+      return vars;
+    }
+
+    function resolveVarType(
+      varName: string,
+      funcInfo: ReturnType<typeof findEnclosingFunc>,
+      localVars: { name: string; type: string }[],
+    ): string | null {
+      if (funcInfo?.receiver?.name === varName) return funcInfo.receiver.type;
+      const param = funcInfo?.params.find(p => p.name === varName);
+      if (param) return param.type.replace(/^\*/, '');
+      const lv = localVars.find(v => v.name === varName);
+      if (lv?.type) return lv.type.replace(/^\*/, '');
+      return null;
+    }
+
+    function getFieldsForType(typeName: string, structs: StructInfo[]): { name: string; type: string; doc?: string }[] | null {
+      const dotIdx = typeName.indexOf('.');
+      if (dotIdx >= 0) {
+        const pkgShort = typeName.substring(0, dotIdx);
+        const symName = typeName.substring(dotIdx + 1);
+        const pkgs = completionsRef.current;
+        if (!pkgs) return null;
+        const pkg = pkgs.find(p => { const si = p.name.lastIndexOf('/'); return (si >= 0 ? p.name.substring(si + 1) : p.name) === pkgShort; });
+        const sym = pkg?.symbols.find(s => s.name === symName);
+        return sym?.fields ?? null;
+      }
+      return structs.find(s => s.name === typeName)?.fields ?? null;
+    }
+
+    function getStructLiteralCtx(code: string, offset: number): { typeName: string; isFieldName: boolean } | null {
+      let depth = 0;
+      for (let i = offset - 1; i >= 0; i--) {
+        if (code[i] === '}') { depth++; continue; }
+        if (code[i] !== '{') continue;
+        if (depth > 0) { depth--; continue; }
+        const lineStart = code.lastIndexOf('\n', i);
+        const lineCtx = code.substring(Math.max(0, lineStart), i);
+        if (/\b(?:func|if|else|for|switch|select|type|interface)\b/.test(lineCtx)) return null;
+        const before = code.substring(Math.max(0, i - 300), i).trimEnd();
+        const tm = before.match(/&?([\w.]+)$/);
+        if (!tm) return null;
+        const inside = code.substring(i + 1, offset);
+        let d2 = 0, lastComma = -1;
+        for (let j = inside.length - 1; j >= 0; j--) {
+          if (inside[j] === '}') d2++;
+          if (inside[j] === '{') d2--;
+          if (d2 === 0 && inside[j] === ',') { lastComma = j; break; }
+        }
+        return { typeName: tm[1], isFieldName: !inside.substring(lastComma + 1).includes(':') };
+      }
+      return null;
+    }
+
+    const localProvider = monaco.languages.registerCompletionItemProvider('go', {
+      triggerCharacters: ['.'],
+      provideCompletionItems: (model, position) => {
+        const code = model.getValue();
+        const offset = model.getOffsetAt(position);
+        const structs = parseStructs(code);
+        const fileSymbols = parseFileSymbols(code);
+        const funcInfo = findEnclosingFunc(code, offset);
+        const localVars = funcInfo ? parseLocalVars(funcInfo.bodyCode) : [];
+
+        const lineText = model.getValueInRange({
+          startLineNumber: position.lineNumber, startColumn: 1,
+          endLineNumber: position.lineNumber, endColumn: position.column,
+        });
+
+        const word = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber, endLineNumber: position.lineNumber,
+          startColumn: word.startColumn, endColumn: word.endColumn,
+        };
+
+        const dotMatch = lineText.match(/(\w+)\.\w*$/);
+        if (dotMatch) {
+          const typeName = resolveVarType(dotMatch[1], funcInfo, localVars);
+          if (!typeName) return { suggestions: [] };
+          const fields = getFieldsForType(typeName, structs);
+          if (!fields) return { suggestions: [] };
+          return {
+            suggestions: fields.map(f => ({
+              label: f.name, kind: monaco.languages.CompletionItemKind.Field,
+              insertText: f.name, detail: f.type, documentation: f.doc, range,
+            })),
+          };
+        }
+
+        const structCtx = getStructLiteralCtx(code, offset);
+        if (structCtx?.isFieldName) {
+          const fields = getFieldsForType(structCtx.typeName, structs);
+          if (fields) {
+            return {
+              suggestions: fields.map(f => ({
+                label: f.name, kind: monaco.languages.CompletionItemKind.Field,
+                insertText: f.name + ': ', detail: f.type, range,
+                sortText: '0_' + f.name,
+              })),
+            };
+          }
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const suggestions: any[] = [];
+        const seen = new Set<string>();
+
+        if (funcInfo?.receiver) {
+          const r = funcInfo.receiver;
+          if (!seen.has(r.name)) { seen.add(r.name); suggestions.push({ label: r.name, kind: monaco.languages.CompletionItemKind.Variable, insertText: r.name, detail: r.type, sortText: '0_' + r.name, range }); }
+        }
+        for (const p of funcInfo?.params ?? []) {
+          if (!seen.has(p.name)) { seen.add(p.name); suggestions.push({ label: p.name, kind: monaco.languages.CompletionItemKind.Variable, insertText: p.name, detail: p.type, sortText: '0_' + p.name, range }); }
+        }
+        for (const v of localVars) {
+          if (!seen.has(v.name)) { seen.add(v.name); suggestions.push({ label: v.name, kind: monaco.languages.CompletionItemKind.Variable, insertText: v.name, detail: v.type || 'variable', sortText: '0_' + v.name, range }); }
+        }
+        for (const s of fileSymbols) {
+          if (!seen.has(s.name)) { seen.add(s.name); suggestions.push({ label: s.name, kind: s.kind, insertText: s.name, detail: s.detail, sortText: '1_' + s.name, range }); }
+        }
+        for (const b of GO_BUILTINS) {
+          if (!seen.has(b.label)) { seen.add(b.label); suggestions.push({ label: b.label, kind: b.kind, insertText: b.label, detail: b.detail, sortText: '2_' + b.label, range }); }
+        }
+        for (const sn of GO_SNIPPETS) {
+          suggestions.push({
+            label: sn.label, kind: monaco.languages.CompletionItemKind.Snippet,
+            insertText: sn.insert,
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            detail: sn.detail, sortText: '3_' + sn.label, range,
+          });
+        }
+
+        return { suggestions };
+      },
+    });
+
+    return () => localProvider.dispose();
+  }, [isMounted]);
+
   const handleBeforeMount = (monaco: Monaco) => {
     monaco.editor.defineTheme('go-path-dark', {
       base: 'vs-dark',
@@ -325,6 +641,24 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
           <span style={{ marginLeft: '8px', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: 'var(--go-code-muted)' }}>
             main.go
           </span>
+          <button
+            ref={helpBtnRef}
+            onClick={() => setShowHelp(!showHelp)}
+            style={{
+              background: showHelp ? 'rgba(0, 173, 216, 0.15)' : 'none',
+              border: 'none',
+              borderRadius: '4px',
+              color: showHelp ? 'var(--go-cyan)' : 'var(--go-code-muted)',
+              cursor: 'pointer',
+              padding: '2px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title="Возможности редактора"
+          >
+            <HelpCircle size={13} />
+          </button>
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
           {language === 'go' && (
@@ -426,6 +760,98 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
           }}
         />
       </div>
+
+      {showHelp && (
+        <>
+          <div onClick={() => setShowHelp(false)} style={{ position: 'fixed', inset: 0, zIndex: 999 }} />
+          <div
+            style={{
+              position: 'fixed',
+              top: helpBtnRef.current ? helpBtnRef.current.getBoundingClientRect().bottom + 8 : 0,
+              left: helpBtnRef.current ? helpBtnRef.current.getBoundingClientRect().left : 0,
+              width: '320px',
+              maxHeight: 'calc(100vh - 100px)',
+              overflowY: 'auto',
+              background: 'var(--go-surface)',
+              border: '1px solid var(--go-border)',
+              borderRadius: '10px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+              zIndex: 1000,
+              padding: '14px 16px',
+              fontSize: '12px',
+              lineHeight: '1.6',
+              color: 'var(--go-text-secondary)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--go-text)' }}>Возможности редактора</span>
+              <button onClick={() => setShowHelp(false)} style={{ background: 'none', border: 'none', color: 'var(--go-muted)', cursor: 'pointer', padding: '2px', display: 'flex' }}>
+                <X size={14} />
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div>
+                <span style={{ color: 'var(--go-cyan)', fontWeight: 600 }}>Автодополнение пакетов</span>
+                <div style={{ color: 'var(--go-muted)' }}>Введите <code style={{ background: 'var(--go-surface-2)', padding: '1px 4px', borderRadius: '3px', fontSize: '11px' }}>fmt.</code> — появятся функции пакета</div>
+              </div>
+              <div>
+                <span style={{ color: 'var(--go-cyan)', fontWeight: 600 }}>Переменные и типы</span>
+                <div style={{ color: 'var(--go-muted)' }}>Подсказки параметров, локальных переменных, типов и функций внутри области видимости</div>
+              </div>
+              <div>
+                <span style={{ color: 'var(--go-cyan)', fontWeight: 600 }}>Поля структур</span>
+                <div style={{ color: 'var(--go-muted)' }}><code style={{ background: 'var(--go-surface-2)', padding: '1px 4px', borderRadius: '3px', fontSize: '11px' }}>s.</code> — поля через точку, <code style={{ background: 'var(--go-surface-2)', padding: '1px 4px', borderRadius: '3px', fontSize: '11px' }}>{'Type{}'}</code> — поля при инициализации</div>
+              </div>
+              <div>
+                <span style={{ color: 'var(--go-cyan)', fontWeight: 600 }}>Сниппеты</span>
+                <div style={{ color: 'var(--go-muted)' }}>
+                  <code style={{ background: 'var(--go-surface-2)', padding: '1px 4px', borderRadius: '3px', fontSize: '11px' }}>iferr</code>{' · '}
+                  <code style={{ background: 'var(--go-surface-2)', padding: '1px 4px', borderRadius: '3px', fontSize: '11px' }}>fori</code>{' · '}
+                  <code style={{ background: 'var(--go-surface-2)', padding: '1px 4px', borderRadius: '3px', fontSize: '11px' }}>forr</code>{' · '}
+                  <code style={{ background: 'var(--go-surface-2)', padding: '1px 4px', borderRadius: '3px', fontSize: '11px' }}>ifelse</code>
+                </div>
+              </div>
+              <div>
+                <span style={{ color: 'var(--go-cyan)', fontWeight: 600 }}>Hover-документация</span>
+                <div style={{ color: 'var(--go-muted)' }}>Наведите на имя пакета или функцию — появится описание</div>
+              </div>
+              {completions && completions.length > 0 && (
+                <div style={{ borderTop: '1px solid var(--go-border)', paddingTop: '8px', marginTop: '2px' }}>
+                  <span style={{ color: 'var(--go-cyan)', fontWeight: 600 }}>Доступные пакеты</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                    {completions.map((pkg) => {
+                      const short = pkg.name.lastIndexOf('/');
+                      const label = short >= 0 ? pkg.name.substring(short + 1) : pkg.name;
+                      return (
+                        <span
+                          key={pkg.name}
+                          title={pkg.name !== label ? `${pkg.name}\n${pkg.doc}` : pkg.doc}
+                          style={{
+                            background: 'var(--go-surface-2)',
+                            border: '1px solid var(--go-border)',
+                            borderRadius: '4px',
+                            padding: '1px 6px',
+                            fontSize: '11px',
+                            fontFamily: "'JetBrains Mono', monospace",
+                            color: 'var(--go-text-secondary)',
+                            cursor: 'default',
+                          }}
+                        >
+                          {label}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              <div style={{ borderTop: '1px solid var(--go-border)', paddingTop: '8px', marginTop: '2px', color: 'var(--go-muted)', fontSize: '11px' }}>
+                <span style={{ fontWeight: 600, color: 'var(--go-text-secondary)' }}>Формат</span> — форматирование gofmt{' · '}
+                <span style={{ fontWeight: 600, color: 'var(--go-text-secondary)' }}>Сброс</span> — вернуть исходный шаблон
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
