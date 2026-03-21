@@ -34,6 +34,7 @@ export function TaskEditorPage() {
   const [selectedSubmissionIdx, setSelectedSubmissionIdx] = useState<number | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const historyRef = useRef<HTMLDivElement>(null);
+  const lastSubmittedCodeRef = useRef<string | null>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -112,7 +113,7 @@ export function TaskEditorPage() {
         results.push({ id: 'error', name: 'Ошибка компиляции', passed: false, output: result.error, expected: '' });
       }
       setTestResults(results);
-      if (result.passed) { setSubmitted(true); setShowAI(true); }
+      if (result.passed) { setSubmitted(true); setShowAI(true); lastSubmittedCodeRef.current = code; }
       setSelectedSubmissionIdx(null);
       fetchTask(chapterId, taskId).then((data) => { setTask(data); if (data.submissions?.length) setSelectedSubmissionIdx(0); }).catch(() => {});
     } catch (error) {
@@ -123,7 +124,7 @@ export function TaskEditorPage() {
   };
 
   const handleGetAI = async () => {
-    if (!chapterId || !taskId || !allPassed) return;
+    if (!chapterId || !taskId || !aiEnabled) return;
     setIsLoadingAI(true);
     setActiveTab('ai');
     try {
@@ -157,6 +158,8 @@ export function TaskEditorPage() {
   }
 
   const allPassed = testResults.length > 0 && testResults.every((r) => r.passed);
+  const codeChanged = allPassed && lastSubmittedCodeRef.current !== null && code !== lastSubmittedCodeRef.current;
+  const aiEnabled = allPassed && !codeChanged;
 
   return (
     <div style={{ background: 'var(--go-bg)', height: 'calc(100vh - 56px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -311,19 +314,19 @@ export function TaskEditorPage() {
 
               <button
                 onClick={handleGetAI}
-                disabled={!allPassed || isLoadingAI}
-                title={!allPassed ? 'AI-анализ доступен после успешного решения' : 'AI-анализ'}
+                disabled={!aiEnabled || isLoadingAI}
+                title={codeChanged ? 'Код изменён — отправьте решение заново' : !allPassed ? 'AI-анализ доступен после успешного решения' : 'AI-анализ'}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px',
                   borderRadius: '8px', background: 'transparent',
-                  border: '1px solid', borderColor: allPassed ? 'var(--go-amber)' : 'var(--go-border-2)',
-                  color: allPassed ? 'var(--go-amber)' : 'var(--go-subtle)',
+                  border: '1px solid', borderColor: aiEnabled ? 'var(--go-amber)' : 'var(--go-border-2)',
+                  color: aiEnabled ? 'var(--go-amber)' : 'var(--go-subtle)',
                   fontSize: '12px', fontWeight: 600,
-                  cursor: allPassed && !isLoadingAI ? 'pointer' : 'not-allowed',
-                  opacity: allPassed ? 1 : 0.5, fontFamily: 'Manrope, sans-serif',
+                  cursor: aiEnabled && !isLoadingAI ? 'pointer' : 'not-allowed',
+                  opacity: aiEnabled ? 1 : 0.5, fontFamily: 'Manrope, sans-serif',
                 }}
-                onMouseEnter={(e) => { if (allPassed && !isLoadingAI) e.currentTarget.style.background = 'rgba(245,158,11,0.08)'; }}
-                onMouseLeave={(e) => { if (allPassed && !isLoadingAI) e.currentTarget.style.background = 'transparent'; }}
+                onMouseEnter={(e) => { if (aiEnabled && !isLoadingAI) e.currentTarget.style.background = 'rgba(245,158,11,0.08)'; }}
+                onMouseLeave={(e) => { if (aiEnabled && !isLoadingAI) e.currentTarget.style.background = 'transparent'; }}
               >
                 <Sparkles size={12} />
                 {isLoadingAI ? 'Анализ...' : 'AI'}

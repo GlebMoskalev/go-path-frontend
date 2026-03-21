@@ -332,35 +332,36 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
               onClick={handleFormat}
               disabled={isFormatting}
               style={{
-                background: 'none',
-                border: '1px solid var(--go-code-border)',
+                background: 'rgba(0, 173, 216, 0.1)',
+                border: '1px solid rgba(0, 173, 216, 0.3)',
                 borderRadius: '6px',
-                color: 'var(--go-code-muted)',
+                color: 'var(--go-cyan)',
                 cursor: isFormatting ? 'not-allowed' : 'pointer',
                 padding: '3px 8px',
                 fontSize: '12px',
+                fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
-                opacity: isFormatting ? 0.5 : 1,
               }}
               title="Форматировать (gofmt)"
             >
               <AlignLeft size={12} />
-              {isFormatting ? 'Форматирование...' : 'Формат'}
+              Формат
             </button>
           )}
           {defaultValue && (
             <button
               onClick={handleReset}
               style={{
-                background: 'none',
-                border: '1px solid var(--go-code-border)',
+                background: 'rgba(245, 158, 11, 0.1)',
+                border: '1px solid rgba(245, 158, 11, 0.3)',
                 borderRadius: '6px',
-                color: 'var(--go-code-muted)',
+                color: 'var(--go-amber)',
                 cursor: 'pointer',
                 padding: '3px 8px',
                 fontSize: '12px',
+                fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',

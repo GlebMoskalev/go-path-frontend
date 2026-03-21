@@ -29,9 +29,9 @@ export function QuizPage() {
   const [answerResult, setAnswerResult] = useState<QuizAnswerResult | null>(null);
   const [score, setScore] = useState(0);
   const [phase, setPhase] = useState<Phase>('setup');
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
     fetchQuizChapters()
       .then((data) => {
         setChapters(data);
@@ -39,7 +39,7 @@ export function QuizPage() {
       })
       .catch(console.error)
       .finally(() => setIsLoadingChapters(false));
-  }, [user]);
+  }, []);
 
   const toggleChapter = (slug: string) => {
     setSelectedChapters((prev) =>
@@ -60,6 +60,11 @@ export function QuizPage() {
     .reduce((sum, c) => sum + c.question_count, 0);
 
   const startQuiz = async () => {
+    if (!user) {
+      setShowAuthPrompt(true);
+      return;
+    }
+    setShowAuthPrompt(false);
     setIsLoadingQuestions(true);
     try {
       const qs = await fetchQuizQuestions(
@@ -132,41 +137,6 @@ export function QuizPage() {
   };
 
   const optionLetters = ['А', 'Б', 'В', 'Г'];
-
-  if (!user) {
-    return (
-      <div style={{ background: 'var(--go-bg)', minHeight: 'calc(100vh - 56px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center', maxWidth: '400px', padding: '24px' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔒</div>
-          <h2 style={{ color: 'var(--go-text)', marginBottom: '8px', fontSize: '22px', fontWeight: 700 }}>Требуется авторизация</h2>
-          <p style={{ color: 'var(--go-muted)', marginBottom: '24px', fontSize: '14px', lineHeight: '1.6' }}>
-            Войдите, чтобы проходить квизы и отслеживать свой прогресс
-          </p>
-          <button
-            onClick={login}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '11px 24px',
-              borderRadius: '12px',
-              background: 'var(--go-cyan)',
-              border: 'none',
-              color: 'var(--go-bg)',
-              fontSize: '14px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              fontFamily: 'Manrope, sans-serif',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--go-cyan-hover)')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--go-cyan)')}
-          >
-            Войти через Google
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   if (isLoadingChapters) {
     return (
@@ -465,6 +435,56 @@ export function QuizPage() {
               {isLoadingQuestions ? 'Загрузка...' : 'Начать квиз'}
               <ChevronRight size={16} />
             </button>
+
+            {showAuthPrompt && !user && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                style={{
+                  marginTop: '16px',
+                  padding: '16px 20px',
+                  borderRadius: '12px',
+                  background: 'var(--go-surface)',
+                  border: '1px solid var(--go-border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--go-text)', marginBottom: '4px' }}>
+                    Требуется авторизация
+                  </div>
+                  <div style={{ fontSize: '13px', color: 'var(--go-muted)' }}>
+                    Войдите, чтобы начать квиз и отслеживать прогресс
+                  </div>
+                </div>
+                <button
+                  onClick={login}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '9px 20px',
+                    borderRadius: '10px',
+                    background: 'var(--go-cyan)',
+                    border: 'none',
+                    color: 'var(--go-bg)',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: 'Manrope, sans-serif',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--go-cyan-hover)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--go-cyan)')}
+                >
+                  Войти через Google
+                </button>
+              </motion.div>
+            )}
           </AnimatedSection>
         </div>
       </div>
