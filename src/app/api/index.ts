@@ -153,6 +153,7 @@ export interface ProjectStepDetail {
   project_slug: string;
   solved: boolean | null;
   completions?: Completion[];
+  submissions?: TaskSubmission[];
 }
 
 export interface AnalysisResult {

@@ -56,6 +56,7 @@ export function TaskEditorPage() {
         setShowAI(false);
         setAiRecommendation('');
         setSelectedSubmissionIdx(null);
+        lastSubmittedCodeRef.current = null;
         if (data.submissions && data.submissions.length > 0) {
           const latest = data.submissions[0];
           setCode(latest.code);
@@ -67,6 +68,7 @@ export function TaskEditorPage() {
           } else {
             setTestResults([]);
           }
+          if (latest.passed) lastSubmittedCodeRef.current = latest.code;
         } else {
           setCode(data.template);
           setTestResults([]);
@@ -91,6 +93,7 @@ export function TaskEditorPage() {
     } else {
       setTestResults([]);
     }
+    lastSubmittedCodeRef.current = sub.passed ? sub.code : null;
     setActiveTab('tests');
   };
 
@@ -100,6 +103,7 @@ export function TaskEditorPage() {
     setSelectedSubmissionIdx(null);
     setTestResults([]);
     setHistoryOpen(false);
+    lastSubmittedCodeRef.current = null;
   };
 
   const handleSubmit = async () => {

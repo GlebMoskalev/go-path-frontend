@@ -186,6 +186,12 @@ export function Header() {
                 <img
                   src={user.picture}
                   alt={user.name}
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const next = e.currentTarget.nextElementSibling as HTMLElement | null;
+                    if (next) next.style.display = 'flex';
+                  }}
                   style={{
                     width: '28px',
                     height: '28px',
@@ -194,6 +200,22 @@ export function Header() {
                     border: '1px solid var(--go-border)',
                   }}
                 />
+                <div style={{
+                  display: 'none',
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  background: 'var(--go-cyan-muted)',
+                  border: '1px solid var(--go-border)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  color: 'var(--go-cyan)',
+                  flexShrink: 0,
+                }}>
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
                 <span style={{
                   fontSize: '13px',
                   fontWeight: 500,

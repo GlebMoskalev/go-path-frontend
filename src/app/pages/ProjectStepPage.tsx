@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronRight, Play, Sparkles, CheckCircle2, AlertCircle,
-  Lightbulb, ChevronDown
+  Lightbulb, ChevronDown, History, XCircle
 } from 'lucide-react';
 import { fetchProjectStep, submitProjectStep, analyzeProjectStep, type ProjectStepDetail } from '../api';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
@@ -12,6 +12,12 @@ import { TestResults, type TestResult } from '../components/TestResults';
 import { DifficultyBadge } from '../components/DifficultyBadge';
 import { SplitPane } from '../components/SplitPane';
 import { useAuth } from '../context/AuthContext';
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 export function ProjectStepPage() {
   const { projectId, stepId } = useParams<{ projectId: string; stepId: string }>();
@@ -28,7 +34,20 @@ export function ProjectStepPage() {
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [activeTab, setActiveTab] = useState<'tests' | 'ai'>('tests');
   const [openHints, setOpenHints] = useState<number[]>([]);
+  const [selectedSubmissionIdx, setSelectedSubmissionIdx] = useState<number | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const historyRef = useRef<HTMLDivElement>(null);
   const lastSubmittedCodeRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (historyRef.current && !historyRef.current.contains(e.target as Node)) {
+        setHistoryOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (!projectId || !stepId) return;
@@ -36,15 +55,57 @@ export function ProjectStepPage() {
     fetchProjectStep(projectId, stepId)
       .then((data) => {
         setStep(data);
-        setCode(data.template);
         setSubmitted(data.solved || false);
         setTestResults([]);
         setShowAI(false);
         setAiRecommendation('');
+        setSelectedSubmissionIdx(null);
+        lastSubmittedCodeRef.current = null;
+        if (data.submissions && data.submissions.length > 0) {
+          const latest = data.submissions[0];
+          setCode(latest.code);
+          setSelectedSubmissionIdx(0);
+          if (latest.result && latest.result.tests) {
+            setTestResults(latest.result.tests.map((t) => ({ id: t.name, name: t.name, passed: t.passed, output: t.output, expected: '' })));
+          } else if (latest.result?.error) {
+            setTestResults([{ id: 'error', name: 'Ошибка компиляции', passed: false, output: latest.result.error, expected: '' }]);
+          }
+          if (latest.passed) lastSubmittedCodeRef.current = latest.code;
+        } else {
+          setCode(data.template);
+        }
       })
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, [projectId, stepId]);
+
+  const submissions = step?.submissions || [];
+
+  const handleSelectSubmission = (idx: number) => {
+    const sub = submissions[idx];
+    if (!sub) return;
+    setCode(sub.code);
+    setSelectedSubmissionIdx(idx);
+    setHistoryOpen(false);
+    if (sub.result && sub.result.tests) {
+      setTestResults(sub.result.tests.map((t) => ({ id: t.name, name: t.name, passed: t.passed, output: t.output, expected: '' })));
+    } else if (sub.result?.error) {
+      setTestResults([{ id: 'error', name: 'Ошибка компиляции', passed: false, output: sub.result.error, expected: '' }]);
+    } else {
+      setTestResults([]);
+    }
+    lastSubmittedCodeRef.current = sub.passed ? sub.code : null;
+    setActiveTab('tests');
+  };
+
+  const handleUseTemplate = () => {
+    if (!step) return;
+    setCode(step.template);
+    setSelectedSubmissionIdx(null);
+    setTestResults([]);
+    setHistoryOpen(false);
+    lastSubmittedCodeRef.current = null;
+  };
 
   const toggleHint = (index: number) => {
     setOpenHints((prev) => prev.includes(index) ? prev.filter((h) => h !== index) : [...prev, index]);
@@ -62,6 +123,8 @@ export function ProjectStepPage() {
       }
       setTestResults(results);
       if (result.passed) { setSubmitted(true); setShowAI(true); lastSubmittedCodeRef.current = code; }
+      setSelectedSubmissionIdx(null);
+      fetchProjectStep(projectId, stepId).then((data) => { setStep(data); if (data.submissions?.length) setSelectedSubmissionIdx(0); }).catch(() => {});
     } catch (error) {
       setTestResults([{ id: 'error', name: 'Ошибка', passed: false, output: error instanceof Error ? error.message : 'Произошла ошибка', expected: '' }]);
     } finally {
@@ -192,6 +255,98 @@ export function ProjectStepPage() {
         <SplitPane direction="vertical" defaultSize={55} minSize={20} maxSize={85} style={{ height: '100%' }}>
           {/* Top: editor + submit */}
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+            {/* Submission history bar */}
+            {submissions.length > 0 && (
+              <div style={{
+                padding: '6px 12px', borderBottom: '1px solid var(--go-border)',
+                background: 'var(--go-surface)', display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0,
+              }}>
+                <History size={13} style={{ color: 'var(--go-muted)', flexShrink: 0 }} />
+                <span style={{ fontSize: '11px', color: 'var(--go-muted)', flexShrink: 0 }}>Решения ({submissions.length})</span>
+                <div ref={historyRef} style={{ position: 'relative', flex: 1 }}>
+                  <button
+                    onClick={() => setHistoryOpen(!historyOpen)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 8px',
+                      borderRadius: '6px', background: 'var(--go-bg)', border: '1px solid var(--go-border-2)',
+                      color: 'var(--go-text-secondary)', fontSize: '11px', cursor: 'pointer',
+                      fontFamily: 'Manrope, sans-serif', width: '100%', maxWidth: '320px',
+                    }}
+                  >
+                    {selectedSubmissionIdx !== null && submissions[selectedSubmissionIdx] ? (
+                      <>
+                        {submissions[selectedSubmissionIdx].passed
+                          ? <CheckCircle2 size={11} style={{ color: 'var(--go-green)', flexShrink: 0 }} />
+                          : <XCircle size={11} style={{ color: 'var(--go-red)', flexShrink: 0 }} />
+                        }
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDate(submissions[selectedSubmissionIdx].created_at)}</span>
+                        <span style={{ color: submissions[selectedSubmissionIdx].passed ? 'var(--go-green)' : 'var(--go-red)', fontWeight: 600, flexShrink: 0 }}>
+                          {submissions[selectedSubmissionIdx].passed ? 'Успешно' : 'Ошибка'}
+                        </span>
+                      </>
+                    ) : (
+                      <span style={{ color: 'var(--go-muted)' }}>Шаблон шага</span>
+                    )}
+                    <ChevronDown size={11} style={{ color: 'var(--go-muted)', marginLeft: 'auto', flexShrink: 0 }} />
+                  </button>
+                  <AnimatePresence>
+                    {historyOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                        transition={{ duration: 0.15 }}
+                        style={{
+                          position: 'absolute', top: 'calc(100% + 4px)', left: 0, width: '100%', maxWidth: '320px',
+                          maxHeight: '240px', overflowY: 'auto', background: 'var(--go-surface)',
+                          border: '1px solid var(--go-border-2)', borderRadius: '10px',
+                          boxShadow: '0 8px 32px rgba(0,0,0,0.15)', zIndex: 20, padding: '4px',
+                        }}
+                      >
+                        <button
+                          onClick={handleUseTemplate}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '6px 8px',
+                            borderRadius: '6px', background: selectedSubmissionIdx === null ? 'var(--go-surface-2)' : 'transparent',
+                            border: 'none', cursor: 'pointer', textAlign: 'left', color: 'var(--go-muted)',
+                            fontSize: '11px', fontFamily: 'Manrope, sans-serif',
+                            borderBottom: '1px solid var(--go-border)', marginBottom: '2px',
+                          }}
+                          onMouseEnter={(e) => { if (selectedSubmissionIdx !== null) e.currentTarget.style.background = 'var(--go-surface-2)'; }}
+                          onMouseLeave={(e) => { if (selectedSubmissionIdx !== null) e.currentTarget.style.background = 'transparent'; }}
+                        >↺ Шаблон шага</button>
+                        {submissions.map((sub, idx) => (
+                          <button
+                            key={sub.id}
+                            onClick={() => handleSelectSubmission(idx)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '6px 8px',
+                              borderRadius: '6px', background: selectedSubmissionIdx === idx ? 'var(--go-surface-2)' : 'transparent',
+                              border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'Manrope, sans-serif',
+                            }}
+                            onMouseEnter={(e) => { if (selectedSubmissionIdx !== idx) e.currentTarget.style.background = 'var(--go-surface-2)'; }}
+                            onMouseLeave={(e) => { if (selectedSubmissionIdx !== idx) e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            {sub.passed
+                              ? <CheckCircle2 size={12} style={{ color: 'var(--go-green)', flexShrink: 0 }} />
+                              : <XCircle size={12} style={{ color: 'var(--go-red)', flexShrink: 0 }} />
+                            }
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '11px', color: 'var(--go-text-secondary)' }}>{formatDate(sub.created_at)}</div>
+                              <div style={{ fontSize: '10px', color: sub.passed ? 'var(--go-green)' : 'var(--go-red)', fontWeight: 600 }}>
+                                {sub.passed ? 'Все тесты пройдены' : 'Тесты не пройдены'}
+                              </div>
+                            </div>
+                            {idx === 0 && (
+                              <span style={{ fontSize: '9px', color: 'var(--go-muted)', background: 'var(--go-border-2)', padding: '1px 5px', borderRadius: '4px', flexShrink: 0 }}>Последнее</span>
+                            )}
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            )}
+
             <div style={{ flex: 1, overflow: 'hidden', padding: '8px 8px 0' }}>
               <CodeEditor value={code} onChange={setCode} defaultValue={step.template} height="100%" completions={step.completions} projectSlug={projectId} stepSlug={stepId} />
             </div>
@@ -281,7 +436,7 @@ export function ProjectStepPage() {
                     <div style={{ textAlign: 'center', padding: '32px 16px' }}>
                       <AlertCircle size={28} style={{ color: 'var(--go-subtle)', marginBottom: '10px' }} />
                       <div style={{ fontSize: '13px', color: 'var(--go-muted)' }}>
-                        {allPassed ? 'Нажмите «AI» чтобы получить рекомендации' : 'AI-анализ доступен после успешного решения'}
+                        {aiEnabled ? 'Нажмите «AI» чтобы получить рекомендации' : codeChanged ? 'Код изменён — запустите тесты заново' : 'AI-анализ доступен после успешного решения'}
                       </div>
                     </div>
                   )}

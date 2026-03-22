@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import Editor, { type Monaco } from '@monaco-editor/react';
-import { Copy, Check, RotateCcw, AlignLeft, HelpCircle, X } from 'lucide-react';
+import { Copy, Check, RotateCcw, AlignLeft, X } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import type { Completion, CompletionSymbol } from '../api';
 import { formatCode, formatProjectCode } from '../api';
@@ -645,22 +645,26 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
             ref={helpBtnRef}
             onClick={() => setShowHelp(!showHelp)}
             style={{
-              background: showHelp ? 'rgba(0, 173, 216, 0.15)' : 'none',
-              border: 'none',
-              borderRadius: '4px',
-              color: showHelp ? 'var(--go-cyan)' : 'var(--go-code-muted)',
+              background: showHelp ? 'rgba(0, 173, 216, 0.18)' : 'transparent',
+              border: `1px solid ${showHelp ? 'rgba(0, 173, 216, 0.5)' : 'rgba(0, 173, 216, 0.35)'}`,
+              borderRadius: '5px',
+              color: 'var(--go-cyan)',
               cursor: 'pointer',
-              padding: '2px',
+              padding: '1px 7px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              fontSize: '11px',
+              fontWeight: 700,
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: '0.02em',
             }}
             title="Возможности редактора"
           >
-            <HelpCircle size={13} />
+            IDE
           </button>
         </div>
-        <div style={{ display: 'flex', gap: '6px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {language === 'go' && (
             <button
               onClick={handleFormat}
@@ -671,7 +675,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
                 borderRadius: '6px',
                 color: 'var(--go-cyan)',
                 cursor: isFormatting ? 'not-allowed' : 'pointer',
-                padding: '3px 8px',
+                padding: '3px 10px',
                 fontSize: '12px',
                 fontWeight: 600,
                 display: 'flex',
@@ -693,7 +697,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
                 borderRadius: '6px',
                 color: 'var(--go-amber)',
                 cursor: 'pointer',
-                padding: '3px 8px',
+                padding: '3px 10px',
                 fontSize: '12px',
                 fontWeight: 600,
                 display: 'flex',
@@ -706,6 +710,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
               Сброс
             </button>
           )}
+          <div style={{ width: '1px', height: '16px', background: 'var(--go-code-border)', opacity: 0.6 }} />
           <button
             onClick={handleCopy}
             style={{
@@ -714,7 +719,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
               borderRadius: '6px',
               color: copied ? 'var(--go-green)' : 'var(--go-code-muted)',
               cursor: 'pointer',
-              padding: '3px 8px',
+              padding: '3px 10px',
               fontSize: '12px',
               display: 'flex',
               alignItems: 'center',
@@ -765,23 +770,43 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
         <>
           <div onClick={() => setShowHelp(false)} style={{ position: 'fixed', inset: 0, zIndex: 999 }} />
           <div
-            style={{
-              position: 'fixed',
-              top: helpBtnRef.current ? helpBtnRef.current.getBoundingClientRect().bottom + 8 : 0,
-              left: helpBtnRef.current ? helpBtnRef.current.getBoundingClientRect().left : 0,
-              width: '320px',
-              maxHeight: 'calc(100vh - 100px)',
-              overflowY: 'auto',
-              background: 'var(--go-surface)',
-              border: '1px solid var(--go-border)',
-              borderRadius: '10px',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-              zIndex: 1000,
-              padding: '14px 16px',
-              fontSize: '12px',
-              lineHeight: '1.6',
-              color: 'var(--go-text-secondary)',
-            }}
+            style={(() => {
+              const TOOLTIP_WIDTH = 320;
+              const MARGIN = 8;
+              const rect = helpBtnRef.current?.getBoundingClientRect();
+              if (!rect) return { position: 'fixed' as const, top: 0, left: 0 };
+
+              const spaceBelow = window.innerHeight - rect.bottom - MARGIN;
+              const spaceAbove = rect.top - MARGIN;
+              const openUpward = spaceBelow < 200 && spaceAbove > spaceBelow;
+
+              const maxH = Math.min(
+                openUpward ? spaceAbove : spaceBelow,
+                window.innerHeight - 80
+              );
+
+              const left = Math.min(rect.left, window.innerWidth - TOOLTIP_WIDTH - MARGIN);
+
+              return {
+                position: 'fixed' as const,
+                ...(openUpward
+                  ? { bottom: window.innerHeight - rect.top + MARGIN }
+                  : { top: rect.bottom + MARGIN }),
+                left: Math.max(MARGIN, left),
+                width: `${TOOLTIP_WIDTH}px`,
+                maxHeight: `${maxH}px`,
+                overflowY: 'auto' as const,
+                background: 'var(--go-surface)',
+                border: '1px solid var(--go-border)',
+                borderRadius: '10px',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+                zIndex: 1000,
+                padding: '14px 16px 20px',
+                fontSize: '12px',
+                lineHeight: '1.6',
+                color: 'var(--go-text-secondary)',
+              };
+            })()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--go-text)' }}>Возможности редактора</span>
@@ -789,65 +814,95 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
                 <X size={14} />
               </button>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div>
-                <span style={{ color: 'var(--go-cyan)', fontWeight: 600 }}>Автодополнение пакетов</span>
-                <div style={{ color: 'var(--go-muted)' }}>Введите <code style={{ background: 'var(--go-surface-2)', padding: '1px 4px', borderRadius: '3px', fontSize: '11px' }}>fmt.</code> — появятся функции пакета</div>
-              </div>
-              <div>
-                <span style={{ color: 'var(--go-cyan)', fontWeight: 600 }}>Переменные и типы</span>
-                <div style={{ color: 'var(--go-muted)' }}>Подсказки параметров, локальных переменных, типов и функций внутри области видимости</div>
-              </div>
-              <div>
-                <span style={{ color: 'var(--go-cyan)', fontWeight: 600 }}>Поля структур</span>
-                <div style={{ color: 'var(--go-muted)' }}><code style={{ background: 'var(--go-surface-2)', padding: '1px 4px', borderRadius: '3px', fontSize: '11px' }}>s.</code> — поля через точку, <code style={{ background: 'var(--go-surface-2)', padding: '1px 4px', borderRadius: '3px', fontSize: '11px' }}>{'Type{}'}</code> — поля при инициализации</div>
-              </div>
-              <div>
-                <span style={{ color: 'var(--go-cyan)', fontWeight: 600 }}>Сниппеты</span>
-                <div style={{ color: 'var(--go-muted)' }}>
-                  <code style={{ background: 'var(--go-surface-2)', padding: '1px 4px', borderRadius: '3px', fontSize: '11px' }}>iferr</code>{' · '}
-                  <code style={{ background: 'var(--go-surface-2)', padding: '1px 4px', borderRadius: '3px', fontSize: '11px' }}>fori</code>{' · '}
-                  <code style={{ background: 'var(--go-surface-2)', padding: '1px 4px', borderRadius: '3px', fontSize: '11px' }}>forr</code>{' · '}
-                  <code style={{ background: 'var(--go-surface-2)', padding: '1px 4px', borderRadius: '3px', fontSize: '11px' }}>ifelse</code>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+              <div style={{ background: 'var(--go-surface-2)', borderRadius: '8px', padding: '10px 12px' }}>
+                <div style={{ fontWeight: 700, color: 'var(--go-text)', marginBottom: '8px', fontSize: '12px' }}>⌨️ Автодополнение</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  {[
+                    { kbd: 'Ctrl+Space', desc: 'открыть список подсказок в любом месте' },
+                    { kbd: 'fmt.', desc: 'все функции и типы пакета' },
+                    { kbd: 's.', desc: 'поля структуры через точку' },
+                    { kbd: 'MyStruct{}', desc: 'имена полей при инициализации' },
+                  ].map(({ kbd, desc }) => (
+                    <div key={kbd} style={{ display: 'grid', gridTemplateColumns: '90px 1fr', alignItems: 'center', gap: '8px' }}>
+                      <code style={{ background: 'var(--go-border)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontFamily: "'JetBrains Mono', monospace", color: 'var(--go-cyan)', whiteSpace: 'nowrap', display: 'block' }}>{kbd}</code>
+                      <span style={{ fontSize: '11px', color: 'var(--go-muted)' }}>{desc}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div>
-                <span style={{ color: 'var(--go-cyan)', fontWeight: 600 }}>Hover-документация</span>
-                <div style={{ color: 'var(--go-muted)' }}>Наведите на имя пакета или функцию — появится описание</div>
+
+              <div style={{ background: 'var(--go-surface-2)', borderRadius: '8px', padding: '10px 12px' }}>
+                <div style={{ fontWeight: 700, color: 'var(--go-text)', marginBottom: '8px', fontSize: '12px' }}>📦 Контекст кода</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  {[
+                    { kbd: 'func f(x T)', desc: 'параметр x виден внутри функции' },
+                    { kbd: 'x := ...', desc: 'переменная доступна после объявления' },
+                    { kbd: 'func (s *S)', desc: 'receiver s доступен в методе' },
+                    { kbd: 'type / func', desc: 'типы и функции видны глобально' },
+                  ].map(({ kbd, desc }) => (
+                    <div key={kbd} style={{ display: 'grid', gridTemplateColumns: '90px 1fr', alignItems: 'center', gap: '8px' }}>
+                      <code style={{ background: 'var(--go-border)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontFamily: "'JetBrains Mono', monospace", color: 'var(--go-text-secondary)', whiteSpace: 'nowrap', display: 'block' }}>{kbd}</code>
+                      <span style={{ fontSize: '11px', color: 'var(--go-muted)' }}>{desc}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
+
+              <div style={{ background: 'var(--go-surface-2)', borderRadius: '8px', padding: '10px 12px' }}>
+                <div style={{ fontWeight: 700, color: 'var(--go-text)', marginBottom: '8px', fontSize: '12px' }}>✂️ Сниппеты</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  {[
+                    ['iferr', 'if err != nil { return err }'],
+                    ['fori', 'for i := 0; i < n; i++ { }'],
+                    ['forr', 'for _, v := range slice { }'],
+                    ['ifelse', 'if cond { } else { }'],
+                    ['gofunc', 'go func() { }()'],
+                    ['deferfunc', 'defer func() { }()'],
+                    ['switchcase', 'switch expr { case val: }'],
+                  ].map(([kw, desc]) => (
+                    <div key={kw} style={{ display: 'grid', gridTemplateColumns: '90px 1fr', alignItems: 'center', gap: '8px' }}>
+                      <code style={{ background: 'var(--go-border)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontFamily: "'JetBrains Mono', monospace", color: 'var(--go-amber)', whiteSpace: 'nowrap', display: 'block' }}>{kw}</code>
+                      <span style={{ fontSize: '11px', color: 'var(--go-muted)' }}>{desc}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ background: 'var(--go-surface-2)', borderRadius: '8px', padding: '10px 12px' }}>
+                <div style={{ fontWeight: 700, color: 'var(--go-text)', marginBottom: '4px', fontSize: '12px' }}>🔍 Hover-документация</div>
+                <div style={{ fontSize: '11px', color: 'var(--go-muted)' }}>
+                  Наведите курсор на символ — появится тип, сигнатура и описание из документации пакета
+                </div>
+              </div>
+
               {completions && completions.length > 0 && (
-                <div style={{ borderTop: '1px solid var(--go-border)', paddingTop: '8px', marginTop: '2px' }}>
-                  <span style={{ color: 'var(--go-cyan)', fontWeight: 600 }}>Доступные пакеты</span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                <div style={{ background: 'var(--go-surface-2)', borderRadius: '8px', padding: '10px 12px' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--go-text)', marginBottom: '8px', fontSize: '12px' }}>📚 Доступные пакеты</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
                     {completions.map((pkg) => {
                       const short = pkg.name.lastIndexOf('/');
                       const label = short >= 0 ? pkg.name.substring(short + 1) : pkg.name;
                       return (
-                        <span
-                          key={pkg.name}
-                          title={pkg.name !== label ? `${pkg.name}\n${pkg.doc}` : pkg.doc}
-                          style={{
-                            background: 'var(--go-surface-2)',
-                            border: '1px solid var(--go-border)',
-                            borderRadius: '4px',
-                            padding: '1px 6px',
-                            fontSize: '11px',
-                            fontFamily: "'JetBrains Mono', monospace",
-                            color: 'var(--go-text-secondary)',
-                            cursor: 'default',
-                          }}
-                        >
+                        <code key={pkg.name} style={{
+                          background: 'rgba(0,173,216,0.1)',
+                          border: '1px solid rgba(0,173,216,0.25)',
+                          borderRadius: '4px',
+                          padding: '2px 7px',
+                          fontSize: '10px',
+                          fontFamily: "'JetBrains Mono', monospace",
+                          color: 'var(--go-cyan)',
+                          whiteSpace: 'nowrap',
+                        }}>
                           {label}
-                        </span>
+                        </code>
                       );
                     })}
                   </div>
                 </div>
               )}
-              <div style={{ borderTop: '1px solid var(--go-border)', paddingTop: '8px', marginTop: '2px', color: 'var(--go-muted)', fontSize: '11px' }}>
-                <span style={{ fontWeight: 600, color: 'var(--go-text-secondary)' }}>Формат</span> — форматирование gofmt{' · '}
-                <span style={{ fontWeight: 600, color: 'var(--go-text-secondary)' }}>Сброс</span> — вернуть исходный шаблон
-              </div>
+
             </div>
           </div>
         </>
