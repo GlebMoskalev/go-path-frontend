@@ -100,7 +100,10 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
           endColumn: position.column,
         });
 
-        const match = textUntilPosition.match(/(\w+)\.\w*$/);
+        const match = /(\w+)\.\w*$/.exec(textUntilPosition);
+        if (match && match.index > 0 && textUntilPosition[match.index - 1] === '.') {
+          return { suggestions: [] };
+        }
         if (!match) {
           const word = model.getWordUntilPosition(position);
           const range = {
@@ -380,23 +383,28 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
       return parsed.filter(p => p.name && p.name !== '_');
     }
 
-    function findEnclosingFunc(code: string, offset: number) {
+    function findFuncBraceIndex(code: string, offset: number): number {
       let depth = 0;
       for (let i = offset - 1; i >= 0; i--) {
         if (code[i] === '}') { depth++; continue; }
         if (code[i] !== '{') continue;
         if (depth > 0) { depth--; continue; }
         const before = code.substring(Math.max(0, i - 500), i);
-        const fm = before.match(/func\s+(?:\(\s*(\w+)\s+(\*?[\w.]+)\s*\)\s+)?(\w+)\s*\(([^)]*)\)[\s\S]*?$/);
-        if (fm) {
-          return {
-            receiver: fm[1] ? { name: fm[1], type: fm[2].replace(/^\*/, '') } : undefined,
-            params: parseParams(fm[4]),
-            bodyCode: code.substring(i + 1, offset),
-          };
-        }
+        const fm = before.match(/func\s+(?:\(\s*\w+\s+\*?[\w.]+\s*\)\s+)?\w+\s*\([^)]*\)[^{]*$/);
+        if (fm) return i;
       }
-      return null;
+      return -1;
+    }
+
+    function findEnclosingFunc(code: string, offset: number) {
+      const before = code.substring(Math.max(0, offset - 501), offset - 1);
+      const fm = before.match(/func\s+(?:\(\s*(\w+)\s+(\*?[\w.]+)\s*\)\s+)?(\w+)\s*\(([^)]*)\)[^{]*$/);
+      if (!fm) return null;
+      return {
+        receiver: fm[1] ? { name: fm[1], type: fm[2].replace(/^\*/, '') } : undefined,
+        params: parseParams(fm[4]),
+        bodyCode: code.substring(offset, offset),
+      };
     }
 
     function parseLocalVars(bodyCode: string): { name: string; type: string }[] {
@@ -445,6 +453,34 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
       return null;
     }
 
+    function normalizeGoType(t: string): string {
+      return t.replace(/^\*/, '').trim();
+    }
+
+    function getFieldType(rootType: string, fieldName: string, structs: StructInfo[]): string | null {
+      const fields = getFieldsForType(rootType, structs);
+      if (!fields) return null;
+      const f = fields.find((x) => x.name === fieldName);
+      return f ? normalizeGoType(f.type) : null;
+    }
+
+    function resolveMemberChainType(
+      parts: string[],
+      funcInfo: ReturnType<typeof findEnclosingFunc>,
+      localVars: { name: string; type: string }[],
+      structs: StructInfo[],
+    ): string | null {
+      if (parts.length === 0) return null;
+      let t: string | null = resolveVarType(parts[0], funcInfo, localVars);
+      if (!t) return null;
+      for (let i = 1; i < parts.length; i++) {
+        const ft = getFieldType(t, parts[i], structs);
+        if (!ft) return null;
+        t = ft;
+      }
+      return t;
+    }
+
     function getFieldsForType(typeName: string, structs: StructInfo[]): { name: string; type: string; doc?: string }[] | null {
       const dotIdx = typeName.indexOf('.');
       if (dotIdx >= 0) {
@@ -486,82 +522,97 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
     const localProvider = monaco.languages.registerCompletionItemProvider('go', {
       triggerCharacters: ['.'],
       provideCompletionItems: (model, position) => {
-        const code = model.getValue();
-        const offset = model.getOffsetAt(position);
-        const structs = parseStructs(code);
-        const fileSymbols = parseFileSymbols(code);
-        const funcInfo = findEnclosingFunc(code, offset);
-        const localVars = funcInfo ? parseLocalVars(funcInfo.bodyCode) : [];
+        try {
+          const code = model.getValue();
+          const offset = model.getOffsetAt(position);
+          const structs = parseStructs(code);
+          const fileSymbols = parseFileSymbols(code);
+          const localVars: { name: string; type: string }[] = [];
 
-        const lineText = model.getValueInRange({
-          startLineNumber: position.lineNumber, startColumn: 1,
-          endLineNumber: position.lineNumber, endColumn: position.column,
-        });
+          let funcInfo: ReturnType<typeof findEnclosingFunc> = null;
+          const funcBraceIdx = findFuncBraceIndex(code, offset);
+          if (funcBraceIdx >= 0) {
+            funcInfo = findEnclosingFunc(code, funcBraceIdx + 1);
+            if (funcInfo) {
+              funcInfo.bodyCode = code.substring(funcBraceIdx + 1, offset);
+              localVars.push(...parseLocalVars(funcInfo.bodyCode));
+            }
+          }
 
-        const word = model.getWordUntilPosition(position);
-        const range = {
-          startLineNumber: position.lineNumber, endLineNumber: position.lineNumber,
-          startColumn: word.startColumn, endColumn: word.endColumn,
-        };
+          const lineText = model.getValueInRange({
+            startLineNumber: position.lineNumber, startColumn: 1,
+            endLineNumber: position.lineNumber, endColumn: position.column,
+          });
 
-        const dotMatch = lineText.match(/(\w+)\.\w*$/);
-        if (dotMatch) {
-          const typeName = resolveVarType(dotMatch[1], funcInfo, localVars);
-          if (!typeName) return { suggestions: [] };
-          const fields = getFieldsForType(typeName, structs);
-          if (!fields) return { suggestions: [] };
-          return {
-            suggestions: fields.map(f => ({
-              label: f.name, kind: monaco.languages.CompletionItemKind.Field,
-              insertText: f.name, detail: f.type, documentation: f.doc, range,
-            })),
+          const word = model.getWordUntilPosition(position);
+          const range = {
+            startLineNumber: position.lineNumber, endLineNumber: position.lineNumber,
+            startColumn: word.startColumn, endColumn: word.endColumn,
           };
-        }
 
-        const structCtx = getStructLiteralCtx(code, offset);
-        if (structCtx?.isFieldName) {
-          const fields = getFieldsForType(structCtx.typeName, structs);
-          if (fields) {
+          const chainMatch = lineText.match(/([\w.]+)\.\w*$/);
+          if (chainMatch) {
+            const parts = chainMatch[1].split('.').filter((p) => p.length > 0);
+            const typeName = resolveMemberChainType(parts, funcInfo, localVars, structs);
+            if (!typeName) return { suggestions: [] };
+            const fields = getFieldsForType(typeName, structs);
+            if (!fields) return { suggestions: [] };
             return {
               suggestions: fields.map(f => ({
                 label: f.name, kind: monaco.languages.CompletionItemKind.Field,
-                insertText: f.name + ': ', detail: f.type, range,
-                sortText: '0_' + f.name,
+                insertText: f.name, detail: f.type, documentation: f.doc, range,
               })),
             };
           }
-        }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const suggestions: any[] = [];
-        const seen = new Set<string>();
+          const structCtx = getStructLiteralCtx(code, offset);
+          if (structCtx?.isFieldName) {
+            const fields = getFieldsForType(structCtx.typeName, structs);
+            if (fields) {
+              return {
+                suggestions: fields.map(f => ({
+                  label: f.name, kind: monaco.languages.CompletionItemKind.Field,
+                  insertText: f.name + ': ', detail: f.type, range,
+                  sortText: '0_' + f.name,
+                })),
+              };
+            }
+          }
 
-        if (funcInfo?.receiver) {
-          const r = funcInfo.receiver;
-          if (!seen.has(r.name)) { seen.add(r.name); suggestions.push({ label: r.name, kind: monaco.languages.CompletionItemKind.Variable, insertText: r.name, detail: r.type, sortText: '0_' + r.name, range }); }
-        }
-        for (const p of funcInfo?.params ?? []) {
-          if (!seen.has(p.name)) { seen.add(p.name); suggestions.push({ label: p.name, kind: monaco.languages.CompletionItemKind.Variable, insertText: p.name, detail: p.type, sortText: '0_' + p.name, range }); }
-        }
-        for (const v of localVars) {
-          if (!seen.has(v.name)) { seen.add(v.name); suggestions.push({ label: v.name, kind: monaco.languages.CompletionItemKind.Variable, insertText: v.name, detail: v.type || 'variable', sortText: '0_' + v.name, range }); }
-        }
-        for (const s of fileSymbols) {
-          if (!seen.has(s.name)) { seen.add(s.name); suggestions.push({ label: s.name, kind: s.kind, insertText: s.name, detail: s.detail, sortText: '1_' + s.name, range }); }
-        }
-        for (const b of GO_BUILTINS) {
-          if (!seen.has(b.label)) { seen.add(b.label); suggestions.push({ label: b.label, kind: b.kind, insertText: b.label, detail: b.detail, sortText: '2_' + b.label, range }); }
-        }
-        for (const sn of GO_SNIPPETS) {
-          suggestions.push({
-            label: sn.label, kind: monaco.languages.CompletionItemKind.Snippet,
-            insertText: sn.insert,
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            detail: sn.detail, sortText: '3_' + sn.label, range,
-          });
-        }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const suggestions: any[] = [];
+          const seen = new Set<string>();
 
-        return { suggestions };
+          if (funcInfo?.receiver) {
+            const r = funcInfo.receiver;
+            if (!seen.has(r.name)) { seen.add(r.name); suggestions.push({ label: r.name, kind: monaco.languages.CompletionItemKind.Variable, insertText: r.name, detail: r.type, sortText: '0_' + r.name, range }); }
+          }
+          for (const p of funcInfo?.params ?? []) {
+            if (!seen.has(p.name)) { seen.add(p.name); suggestions.push({ label: p.name, kind: monaco.languages.CompletionItemKind.Variable, insertText: p.name, detail: p.type, sortText: '0_' + p.name, range }); }
+          }
+          for (const v of localVars) {
+            if (!seen.has(v.name)) { seen.add(v.name); suggestions.push({ label: v.name, kind: monaco.languages.CompletionItemKind.Variable, insertText: v.name, detail: v.type || 'variable', sortText: '0_' + v.name, range }); }
+          }
+          for (const s of fileSymbols) {
+            if (!seen.has(s.name)) { seen.add(s.name); suggestions.push({ label: s.name, kind: s.kind, insertText: s.name, detail: s.detail, sortText: '1_' + s.name, range }); }
+          }
+          for (const b of GO_BUILTINS) {
+            if (!seen.has(b.label)) { seen.add(b.label); suggestions.push({ label: b.label, kind: b.kind, insertText: b.label, detail: b.detail, sortText: '2_' + b.label, range }); }
+          }
+          for (const sn of GO_SNIPPETS) {
+            suggestions.push({
+              label: sn.label, kind: monaco.languages.CompletionItemKind.Snippet,
+              insertText: sn.insert,
+              insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+              detail: sn.detail, sortText: '3_' + sn.label, range,
+            });
+          }
+
+          return { suggestions };
+        } catch (e) {
+          console.error('[CodeEditor] local completion error:', e);
+          return { suggestions: [] };
+        }
       },
     });
 
@@ -762,6 +813,12 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
             folding: false,
             lineDecorationsWidth: 10,
             renderLineHighlight: 'line',
+            fixedOverflowWidgets: true,
+            wordBasedSuggestions: 'off',
+            suggest: {
+              showWords: false,
+              filterGraceful: false,
+            },
           }}
         />
       </div>
