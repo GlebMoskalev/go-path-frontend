@@ -2,10 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  ChevronRight, Play, Sparkles, CheckCircle2, AlertCircle,
+  ChevronRight, ChevronLeft, Play, Sparkles, CheckCircle2, AlertCircle,
   Lightbulb, ChevronDown, History, XCircle
 } from 'lucide-react';
-import { fetchProjectStep, submitProjectStep, analyzeProjectStep, type ProjectStepDetail } from '../api';
+import { fetchProjectStep, submitProjectStep, analyzeProjectStep, fetchProject, type ProjectStepDetail, type ProjectSummary } from '../api';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { CodeEditor } from '../components/CodeEditor';
 import { TestResults, type TestResult } from '../components/TestResults';
@@ -17,6 +17,37 @@ function formatDate(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+interface NavItem {
+  href: string;
+  title: string;
+}
+
+interface StepNav {
+  prev: NavItem | null;
+  next: NavItem | null;
+}
+
+function buildStepNav(project: ProjectSummary, stepSlug: string): StepNav {
+  const steps = [...project.steps].sort((a, b) => a.order - b.order);
+  const idx = steps.findIndex((s) => s.slug === stepSlug);
+  if (idx === -1) return { prev: null, next: null };
+
+  let prev: NavItem | null = null;
+  let next: NavItem | null = null;
+
+  if (idx > 0) {
+    const p = steps[idx - 1];
+    prev = { href: `/projects/${project.slug}/${p.slug}`, title: p.title };
+  }
+
+  if (idx < steps.length - 1) {
+    const n = steps[idx + 1];
+    next = { href: `/projects/${project.slug}/${n.slug}`, title: n.title };
+  }
+
+  return { prev, next };
 }
 
 export function ProjectStepPage() {
@@ -32,6 +63,7 @@ export function ProjectStepPage() {
   const [aiRecommendation, setAiRecommendation] = useState('');
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [activeTab, setActiveTab] = useState<'tests' | 'ai'>('tests');
+  const [nav, setNav] = useState<StepNav>({ prev: null, next: null });
   const [openHints, setOpenHints] = useState<number[]>([]);
   const [selectedSubmissionIdx, setSelectedSubmissionIdx] = useState<number | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -51,28 +83,34 @@ export function ProjectStepPage() {
   useEffect(() => {
     if (!projectId || !stepId) return;
     setIsLoading(true);
-    fetchProjectStep(projectId, stepId)
-      .then((data) => {
-        setStep(data);
-        setSubmitted(data.solved || false);
-        setTestResults([]);
-        setAiRecommendation('');
-        setSelectedSubmissionIdx(null);
-        lastSubmittedCodeRef.current = null;
-        if (data.submissions && data.submissions.length > 0) {
-          const latest = data.submissions[0];
-          setCode(latest.code);
-          setSelectedSubmissionIdx(0);
-          if (latest.result && latest.result.tests) {
-            setTestResults(latest.result.tests.map((t) => ({ id: t.name, name: t.name, passed: t.passed, output: t.output, expected: '' })));
-          } else if (latest.result?.error) {
-            setTestResults([{ id: 'error', name: 'Ошибка компиляции', passed: false, output: latest.result.error, expected: '' }]);
-          }
-          if (latest.passed) lastSubmittedCodeRef.current = latest.code;
-        } else {
-          setCode(data.template);
+
+    const stepPromise = fetchProjectStep(projectId, stepId).then((data) => {
+      setStep(data);
+      setSubmitted(data.solved || false);
+      setTestResults([]);
+      setAiRecommendation('');
+      setSelectedSubmissionIdx(null);
+      lastSubmittedCodeRef.current = null;
+      if (data.submissions && data.submissions.length > 0) {
+        const latest = data.submissions[0];
+        setCode(latest.code);
+        setSelectedSubmissionIdx(0);
+        if (latest.result && latest.result.tests) {
+          setTestResults(latest.result.tests.map((t) => ({ id: t.name, name: t.name, passed: t.passed, output: t.output, expected: '' })));
+        } else if (latest.result?.error) {
+          setTestResults([{ id: 'error', name: 'Ошибка компиляции', passed: false, output: latest.result.error, expected: '' }]);
         }
-      })
+        if (latest.passed) lastSubmittedCodeRef.current = latest.code;
+      } else {
+        setCode(data.template);
+      }
+    });
+
+    const projectPromise = fetchProject(projectId).then((project) => {
+      setNav(buildStepNav(project, stepId));
+    });
+
+    Promise.all([stepPromise, projectPromise])
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, [projectId, stepId]);
@@ -180,13 +218,45 @@ export function ProjectStepPage() {
         <span style={{ fontSize: '13px', color: 'var(--go-muted)' }}>{step.project_title}</span>
         <ChevronRight size={13} style={{ color: 'var(--go-subtle)' }} />
         <span style={{ fontSize: '13px', color: 'var(--go-text)' }}>{step.title}</span>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '12px', color: 'var(--go-muted)' }}>Шаг {step.order}</span>
+        <span style={{ fontSize: '12px', color: 'var(--go-muted)' }}>Шаг {step.order}</span>
           <DifficultyBadge difficulty={step.difficulty} size="sm" />
           {submitted && (
             <span style={{ fontSize: '12px', color: 'var(--go-green)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
               <CheckCircle2 size={13} /> Решён
             </span>
+          )}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {nav.prev && (
+            <Link
+              to={nav.prev.href}
+              title={nav.prev.title}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px',
+                borderRadius: '6px', border: '1px solid var(--go-border)',
+                background: 'var(--go-surface)', color: 'var(--go-muted)',
+                fontSize: '12px', fontWeight: 500, textDecoration: 'none',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--go-cyan)'; e.currentTarget.style.color = 'var(--go-text)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--go-border)'; e.currentTarget.style.color = 'var(--go-muted)'; }}
+            >
+              <ChevronLeft size={12} /> Пред.
+            </Link>
+          )}
+          {nav.next && (
+            <Link
+              to={nav.next.href}
+              title={nav.next.title}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px',
+                borderRadius: '6px', border: '1px solid var(--go-border)',
+                background: 'var(--go-surface)', color: 'var(--go-muted)',
+                fontSize: '12px', fontWeight: 500, textDecoration: 'none',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--go-cyan)'; e.currentTarget.style.color = 'var(--go-text)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--go-border)'; e.currentTarget.style.color = 'var(--go-muted)'; }}
+            >
+              След. <ChevronRight size={12} />
+            </Link>
           )}
         </div>
       </div>

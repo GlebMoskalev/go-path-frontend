@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Editor, { type Monaco } from '@monaco-editor/react';
-import { Copy, Check, RotateCcw, AlignLeft, X } from 'lucide-react';
+import type { editor, Position } from 'monaco-editor';
+import { Copy, Check, RotateCcw, AlignLeft, X, HelpCircle } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import type { Completion, CompletionSymbol } from '../api';
 import { formatCode, formatProjectCode } from '../api';
@@ -92,7 +93,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
 
     const completionProvider = monaco.languages.registerCompletionItemProvider('go', {
       triggerCharacters: ['.'],
-      provideCompletionItems: (model, position) => {
+      provideCompletionItems: (model: editor.ITextModel, position: Position) => {
         const textUntilPosition = model.getValueInRange({
           startLineNumber: position.lineNumber,
           startColumn: 1,
@@ -185,7 +186,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
     });
 
     const hoverProvider = monaco.languages.registerHoverProvider('go', {
-      provideHover: (model, position) => {
+      provideHover: (model: editor.ITextModel, position: Position) => {
         const line = model.getLineContent(position.lineNumber);
         const word = model.getWordAtPosition(position);
         if (!word) return null;
@@ -521,7 +522,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
 
     const localProvider = monaco.languages.registerCompletionItemProvider('go', {
       triggerCharacters: ['.'],
-      provideCompletionItems: (model, position) => {
+      provideCompletionItems: (model: editor.ITextModel, position: Position) => {
         try {
           const code = model.getValue();
           const offset = model.getOffsetAt(position);
@@ -552,7 +553,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
 
           const chainMatch = lineText.match(/([\w.]+)\.\w*$/);
           if (chainMatch) {
-            const parts = chainMatch[1].split('.').filter((p) => p.length > 0);
+            const parts = chainMatch[1].split('.').filter((p: string) => p.length > 0);
             const typeName = resolveMemberChainType(parts, funcInfo, localVars, structs);
             if (!typeName) return { suggestions: [] };
             const fields = getFieldsForType(typeName, structs);
@@ -712,7 +713,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
             }}
             title="Возможности редактора"
           >
-            IDE
+            IDE <HelpCircle size={11} style={{ marginLeft: '2px' }} />
           </button>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

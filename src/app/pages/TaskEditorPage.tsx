@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router';
-import { ChevronRight, Play, Sparkles, CheckCircle2, AlertCircle, History, XCircle, ChevronDown } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Play, Sparkles, CheckCircle2, AlertCircle, History, XCircle, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { fetchTask, submitTask, analyzeTask, type TaskDetail } from '../api';
+import { fetchTask, submitTask, analyzeTask, fetchTaskChapters, type TaskDetail, type TaskChapter } from '../api';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { CodeEditor } from '../components/CodeEditor';
 import { TestResults, type TestResult } from '../components/TestResults';
@@ -14,6 +14,56 @@ function formatDate(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+interface NavItem {
+  href: string;
+  title: string;
+}
+
+interface TaskNav {
+  prev: NavItem | null;
+  next: NavItem | null;
+}
+
+function buildTaskNav(chapters: TaskChapter[], chapterSlug: string, taskSlug: string): TaskNav {
+  const sorted = [...chapters].sort((a, b) => a.order - b.order);
+  const chIdx = sorted.findIndex((c) => c.slug === chapterSlug);
+  if (chIdx === -1) return { prev: null, next: null };
+
+  const chapter = sorted[chIdx];
+  const tasks = [...chapter.tasks].sort((a, b) => a.order - b.order);
+  const tIdx = tasks.findIndex((t) => t.slug === taskSlug);
+  if (tIdx === -1) return { prev: null, next: null };
+
+  let prev: NavItem | null = null;
+  let next: NavItem | null = null;
+
+  if (tIdx > 0) {
+    const p = tasks[tIdx - 1];
+    prev = { href: `/tasks/${chapterSlug}/${p.slug}`, title: p.title };
+  } else if (chIdx > 0) {
+    const prevCh = sorted[chIdx - 1];
+    const prevTasks = [...prevCh.tasks].sort((a, b) => a.order - b.order);
+    if (prevTasks.length > 0) {
+      const p = prevTasks[prevTasks.length - 1];
+      prev = { href: `/tasks/${prevCh.slug}/${p.slug}`, title: p.title };
+    }
+  }
+
+  if (tIdx < tasks.length - 1) {
+    const n = tasks[tIdx + 1];
+    next = { href: `/tasks/${chapterSlug}/${n.slug}`, title: n.title };
+  } else if (chIdx < sorted.length - 1) {
+    const nextCh = sorted[chIdx + 1];
+    const nextTasks = [...nextCh.tasks].sort((a, b) => a.order - b.order);
+    if (nextTasks.length > 0) {
+      const n = nextTasks[0];
+      next = { href: `/tasks/${nextCh.slug}/${n.slug}`, title: n.title };
+    }
+  }
+
+  return { prev, next };
 }
 
 export function TaskEditorPage() {
@@ -29,6 +79,7 @@ export function TaskEditorPage() {
   const [aiRecommendation, setAiRecommendation] = useState('');
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [activeTab, setActiveTab] = useState<'tests' | 'ai'>('tests');
+  const [nav, setNav] = useState<TaskNav>({ prev: null, next: null });
 
   const [selectedSubmissionIdx, setSelectedSubmissionIdx] = useState<number | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -48,30 +99,36 @@ export function TaskEditorPage() {
   useEffect(() => {
     if (!chapterId || !taskId) return;
     setIsLoading(true);
-    fetchTask(chapterId, taskId)
-      .then((data) => {
-        setTask(data);
-        setSubmitted(data.solved || false);
-        setAiRecommendation('');
-        setSelectedSubmissionIdx(null);
-        lastSubmittedCodeRef.current = null;
-        if (data.submissions && data.submissions.length > 0) {
-          const latest = data.submissions[0];
-          setCode(latest.code);
-          setSelectedSubmissionIdx(0);
-          if (latest.result && latest.result.tests) {
-            setTestResults(latest.result.tests.map((t) => ({ id: t.name, name: t.name, passed: t.passed, output: t.output, expected: '' })));
-          } else if (latest.result?.error) {
-            setTestResults([{ id: 'error', name: 'Ошибка компиляции', passed: false, output: latest.result.error, expected: '' }]);
-          } else {
-            setTestResults([]);
-          }
-          if (latest.passed) lastSubmittedCodeRef.current = latest.code;
+
+    const taskPromise = fetchTask(chapterId, taskId).then((data) => {
+      setTask(data);
+      setSubmitted(data.solved || false);
+      setAiRecommendation('');
+      setSelectedSubmissionIdx(null);
+      lastSubmittedCodeRef.current = null;
+      if (data.submissions && data.submissions.length > 0) {
+        const latest = data.submissions[0];
+        setCode(latest.code);
+        setSelectedSubmissionIdx(0);
+        if (latest.result && latest.result.tests) {
+          setTestResults(latest.result.tests.map((t) => ({ id: t.name, name: t.name, passed: t.passed, output: t.output, expected: '' })));
+        } else if (latest.result?.error) {
+          setTestResults([{ id: 'error', name: 'Ошибка компиляции', passed: false, output: latest.result.error, expected: '' }]);
         } else {
-          setCode(data.template);
           setTestResults([]);
         }
-      })
+        if (latest.passed) lastSubmittedCodeRef.current = latest.code;
+      } else {
+        setCode(data.template);
+        setTestResults([]);
+      }
+    });
+
+    const chaptersPromise = fetchTaskChapters().then((chapters) => {
+      setNav(buildTaskNav(chapters, chapterId, taskId));
+    });
+
+    Promise.all([taskPromise, chaptersPromise])
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, [chapterId, taskId]);
@@ -177,10 +234,44 @@ export function TaskEditorPage() {
         <span style={{ fontSize: '13px', color: 'var(--go-text)' }}>{task.title}</span>
         <DifficultyBadge difficulty={task.difficulty} size="sm" />
         {submitted && (
-          <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--go-green)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+          <span style={{ fontSize: '12px', color: 'var(--go-green)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
             <CheckCircle2 size={13} /> Решена
           </span>
         )}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {nav.prev && (
+            <Link
+              to={nav.prev.href}
+              title={nav.prev.title}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px',
+                borderRadius: '6px', border: '1px solid var(--go-border)',
+                background: 'var(--go-surface)', color: 'var(--go-muted)',
+                fontSize: '12px', fontWeight: 500, textDecoration: 'none',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--go-cyan)'; e.currentTarget.style.color = 'var(--go-text)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--go-border)'; e.currentTarget.style.color = 'var(--go-muted)'; }}
+            >
+              <ChevronLeft size={12} /> Пред.
+            </Link>
+          )}
+          {nav.next && (
+            <Link
+              to={nav.next.href}
+              title={nav.next.title}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px',
+                borderRadius: '6px', border: '1px solid var(--go-border)',
+                background: 'var(--go-surface)', color: 'var(--go-muted)',
+                fontSize: '12px', fontWeight: 500, textDecoration: 'none',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--go-cyan)'; e.currentTarget.style.color = 'var(--go-text)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--go-border)'; e.currentTarget.style.color = 'var(--go-muted)'; }}
+            >
+              След. <ChevronRight size={12} />
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Main resizable layout: description | code+tests */}
