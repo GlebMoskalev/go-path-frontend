@@ -29,7 +29,6 @@ export function ProjectStepPage() {
   const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [showAI, setShowAI] = useState(false);
   const [aiRecommendation, setAiRecommendation] = useState('');
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [activeTab, setActiveTab] = useState<'tests' | 'ai'>('tests');
@@ -57,7 +56,6 @@ export function ProjectStepPage() {
         setStep(data);
         setSubmitted(data.solved || false);
         setTestResults([]);
-        setShowAI(false);
         setAiRecommendation('');
         setSelectedSubmissionIdx(null);
         lastSubmittedCodeRef.current = null;
@@ -122,7 +120,7 @@ export function ProjectStepPage() {
         results.push({ id: 'error', name: 'Ошибка компиляции', passed: false, output: result.error, expected: '' });
       }
       setTestResults(results);
-      if (result.passed) { setSubmitted(true); setShowAI(true); lastSubmittedCodeRef.current = code; }
+      if (result.passed) { setSubmitted(true); lastSubmittedCodeRef.current = code; }
       setSelectedSubmissionIdx(null);
       fetchProjectStep(projectId, stepId).then((data) => { setStep(data); if (data.submissions?.length) setSelectedSubmissionIdx(0); }).catch(() => {});
     } catch (error) {
@@ -179,7 +177,7 @@ export function ProjectStepPage() {
           onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--go-muted)')}
         >Проекты</Link>
         <ChevronRight size={13} style={{ color: 'var(--go-subtle)' }} />
-        <span style={{ fontSize: '13px', color: 'var(--go-muted)' }}>{step.project_slug}</span>
+        <span style={{ fontSize: '13px', color: 'var(--go-muted)' }}>{step.project_title}</span>
         <ChevronRight size={13} style={{ color: 'var(--go-subtle)' }} />
         <span style={{ fontSize: '13px', color: 'var(--go-text)' }}>{step.title}</span>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>

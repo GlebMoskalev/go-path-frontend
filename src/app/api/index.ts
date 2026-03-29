@@ -44,6 +44,7 @@ export interface TheoryLesson {
   description: string;
   order: number;
   chapter_slug: string;
+  chapter_title: string;
   content: string;
   completed?: boolean;
 }
@@ -87,6 +88,7 @@ export interface TaskDetail {
   difficulty: Difficulty;
   order: number;
   chapter_slug: string;
+  chapter_title: string;
   solved: boolean | null;
   submissions?: TaskSubmission[];
   completions?: Completion[];
@@ -151,6 +153,7 @@ export interface ProjectStepDetail {
   file: string;
   order: number;
   project_slug: string;
+  project_title: string;
   solved: boolean | null;
   completions?: Completion[];
   submissions?: TaskSubmission[];

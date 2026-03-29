@@ -26,7 +26,6 @@ export function TaskEditorPage() {
   const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [showAI, setShowAI] = useState(false);
   const [aiRecommendation, setAiRecommendation] = useState('');
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [activeTab, setActiveTab] = useState<'tests' | 'ai'>('tests');
@@ -53,7 +52,6 @@ export function TaskEditorPage() {
       .then((data) => {
         setTask(data);
         setSubmitted(data.solved || false);
-        setShowAI(false);
         setAiRecommendation('');
         setSelectedSubmissionIdx(null);
         lastSubmittedCodeRef.current = null;
@@ -117,7 +115,7 @@ export function TaskEditorPage() {
         results.push({ id: 'error', name: 'Ошибка компиляции', passed: false, output: result.error, expected: '' });
       }
       setTestResults(results);
-      if (result.passed) { setSubmitted(true); setShowAI(true); lastSubmittedCodeRef.current = code; }
+      if (result.passed) { setSubmitted(true); lastSubmittedCodeRef.current = code; }
       setSelectedSubmissionIdx(null);
       fetchTask(chapterId, taskId).then((data) => { setTask(data); if (data.submissions?.length) setSelectedSubmissionIdx(0); }).catch(() => {});
     } catch (error) {
@@ -174,10 +172,7 @@ export function TaskEditorPage() {
           onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--go-muted)')}
         >Задачи</Link>
         <ChevronRight size={13} style={{ color: 'var(--go-subtle)' }} />
-        <Link to="/tasks" style={{ fontSize: '13px', color: 'var(--go-muted)', textDecoration: 'none' }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--go-text)')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--go-muted)')}
-        >{task.chapter_slug}</Link>
+        <span style={{ fontSize: '13px', color: 'var(--go-muted)' }}>{task.chapter_title}</span>
         <ChevronRight size={13} style={{ color: 'var(--go-subtle)' }} />
         <span style={{ fontSize: '13px', color: 'var(--go-text)' }}>{task.title}</span>
         <DifficultyBadge difficulty={task.difficulty} size="sm" />

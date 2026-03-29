@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router';
 import { ChevronRight, ChevronLeft, CheckCircle2, BookOpenCheck, BookOpen } from 'lucide-react';
-import { fetchTheoryLesson, fetchTheoryChapters, completeTheoryLesson, type TheoryLesson, type TheoryChapter, type TheoryLessonSummary } from '../api';
+import { fetchTheoryLesson, fetchTheoryChapters, completeTheoryLesson, type TheoryLesson, type TheoryChapter } from '../api';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
@@ -137,7 +137,7 @@ export function TheoryLessonPage() {
             Теория
           </Link>
           <ChevronRight size={13} style={{ color: 'var(--go-subtle)' }} />
-          <span style={{ fontSize: '13px', color: 'var(--go-muted)' }}>{lesson.chapter_slug}</span>
+          <span style={{ fontSize: '13px', color: 'var(--go-muted)' }}>{lesson.chapter_title}</span>
           <ChevronRight size={13} style={{ color: 'var(--go-subtle)' }} />
           <span style={{ fontSize: '13px', color: 'var(--go-text)' }}>{lesson.title}</span>
         </div>
