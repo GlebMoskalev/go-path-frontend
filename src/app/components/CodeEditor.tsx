@@ -331,6 +331,14 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
     ];
 
     interface StructInfo { name: string; fields: { name: string; type: string }[] }
+    interface MethodInfo {
+      receiverType: string;
+      name: string;
+      params: string;
+      returnTypes: string[];
+      signature: string;
+      doc: string;
+    }
 
     function parseStructs(code: string): StructInfo[] {
       const structs: StructInfo[] = [];
@@ -347,6 +355,32 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
         structs.push({ name: m[1], fields });
       }
       return structs;
+    }
+
+    function parseMethods(code: string): MethodInfo[] {
+      const methods: MethodInfo[] = [];
+      const re = /(?:\/\/\s*(.+)\n\s*)?func\s+\(\s*\w+\s+\*?(\w+)\s*\)\s+(\w+)\s*\(([^)]*)\)\s*([^{]*)/g;
+      let m;
+      while ((m = re.exec(code)) !== null) {
+        const doc = m[1] ? m[1].trim() : '';
+        const receiverType = m[2];
+        const name = m[3];
+        const params = m[4].trim();
+        const retStr = m[5].trim();
+        const returnTypes: string[] = [];
+        if (retStr) {
+          const parenMatch = retStr.match(/^\(([^)]*)\)/);
+          if (parenMatch) {
+            returnTypes.push(...parenMatch[1].split(',').map(t => t.trim()).filter(Boolean));
+          } else {
+            returnTypes.push(retStr.split(/\s/)[0]);
+          }
+        }
+        const retPart = retStr ? ' ' + retStr : '';
+        const sig = `func (${receiverType}) ${name}(${params})${retPart}`;
+        methods.push({ receiverType, name, params, returnTypes, signature: sig, doc });
+      }
+      return methods;
     }
 
     function parseFileSymbols(code: string) {
@@ -412,16 +446,23 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
       const vars: { name: string; type: string }[] = [];
       const seen = new Set<string>();
       let m;
-
       const shortRe = /([\w][\w\s,]*?)\s*:=/g;
       while ((m = shortRe.exec(bodyCode)) !== null) {
         const names = m[1].split(',').map(n => n.trim()).filter(Boolean);
         const rhs = bodyCode.substring(m.index + m[0].length).trimStart();
-        const tm = rhs.match(/^&?([\w][\w.]*)\s*[\{(]/);
+        const tm = rhs.match(/^&?([\w][\w.]*)\s*([{(])/);
+        let inferredType = '';
+        if (tm) {
+          if (tm[2] === '{') {
+            inferredType = tm[1];
+          } else if (tm[2] === '(' && !tm[1].includes('.')) {
+            inferredType = tm[1];
+          }
+        }
         for (const name of names) {
           if (name !== '_' && !seen.has(name)) {
             seen.add(name);
-            vars.push({ name, type: tm ? tm[1] : '' });
+            vars.push({ name, type: inferredType });
           }
         }
       }
@@ -455,7 +496,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
     }
 
     function normalizeGoType(t: string): string {
-      return t.replace(/^\*/, '').trim();
+      return t.replace(/^(\*|\[\])+/, '').trim();
     }
 
     function getFieldType(rootType: string, fieldName: string, structs: StructInfo[]): string | null {
@@ -496,6 +537,76 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
       return structs.find(s => s.name === typeName)?.fields ?? null;
     }
 
+    function parseFuncReturnTypes(funcType: string): string[] {
+      if (!funcType.startsWith('func')) return [];
+      const firstParen = funcType.indexOf('(');
+      if (firstParen < 0) return [];
+      let depth = 0;
+      let paramEnd = -1;
+      for (let i = firstParen; i < funcType.length; i++) {
+        if (funcType[i] === '(') depth++;
+        if (funcType[i] === ')') { depth--; if (depth === 0) { paramEnd = i; break; } }
+      }
+      if (paramEnd < 0) return [];
+      const afterParams = funcType.substring(paramEnd + 1).trim();
+      if (!afterParams) return [];
+      if (afterParams.startsWith('(')) {
+        const closeParen = afterParams.lastIndexOf(')');
+        if (closeParen < 0) return [];
+        return afterParams.substring(1, closeParen).split(',').map(t => t.trim()).filter(Boolean);
+      }
+      return [afterParams];
+    }
+
+    function resolveMethodReturnType(
+      chainExpr: string,
+      funcInfo: ReturnType<typeof findEnclosingFunc>,
+      localVars: { name: string; type: string }[],
+      structs: StructInfo[],
+    ): string[] | null {
+      const parts = chainExpr.split('.').filter(p => p.length > 0);
+      if (parts.length < 2) return null;
+      const methodName = parts[parts.length - 1];
+      const objParts = parts.slice(0, -1);
+      const objType = resolveMemberChainType(objParts, funcInfo, localVars, structs);
+      if (!objType) return null;
+      const fields = getFieldsForType(objType, structs);
+      if (!fields) return null;
+      const field = fields.find(f => f.name === methodName);
+      if (!field) return null;
+      if (field.type.startsWith('func')) {
+        return parseFuncReturnTypes(field.type);
+      }
+      return [field.type];
+    }
+
+    function resolveLocalVarTypesFromCalls(
+      bodyCode: string,
+      localVars: { name: string; type: string }[],
+      funcInfo: ReturnType<typeof findEnclosingFunc>,
+      structs: StructInfo[],
+    ): void {
+      const re = /([\w][\w\s,]*?)\s*:=\s*/g;
+      let cm;
+      while ((cm = re.exec(bodyCode)) !== null) {
+        const names = cm[1].split(',').map(n => n.trim()).filter(Boolean);
+        const hasUnresolved = names.some(n => n !== '_' && localVars.find(v => v.name === n && !v.type));
+        if (!hasUnresolved) continue;
+        const rhs = bodyCode.substring(cm.index + cm[0].length).trimStart();
+        const callMatch = rhs.match(/^([\w]+(?:\.[\w]+)+)\s*\(/);
+        if (!callMatch) continue;
+        const returnTypes = resolveMethodReturnType(callMatch[1], funcInfo, localVars, structs);
+        if (!returnTypes) continue;
+        for (let i = 0; i < names.length && i < returnTypes.length; i++) {
+          if (names[i] === '_') continue;
+          const lv = localVars.find(v => v.name === names[i]);
+          if (lv && !lv.type) {
+            lv.type = returnTypes[i].replace(/^\*/, '');
+          }
+        }
+      }
+    }
+
     function getStructLiteralCtx(code: string, offset: number): { typeName: string; isFieldName: boolean } | null {
       let depth = 0;
       for (let i = offset - 1; i >= 0; i--) {
@@ -527,6 +638,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
           const code = model.getValue();
           const offset = model.getOffsetAt(position);
           const structs = parseStructs(code);
+          const codeMethods = parseMethods(code);
           const fileSymbols = parseFileSymbols(code);
           const localVars: { name: string; type: string }[] = [];
 
@@ -537,6 +649,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
             if (funcInfo) {
               funcInfo.bodyCode = code.substring(funcBraceIdx + 1, offset);
               localVars.push(...parseLocalVars(funcInfo.bodyCode));
+              resolveLocalVarTypesFromCalls(funcInfo.bodyCode, localVars, funcInfo, structs);
             }
           }
 
@@ -557,13 +670,45 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
             const typeName = resolveMemberChainType(parts, funcInfo, localVars, structs);
             if (!typeName) return { suggestions: [] };
             const fields = getFieldsForType(typeName, structs);
-            if (!fields) return { suggestions: [] };
-            return {
-              suggestions: fields.map(f => ({
-                label: f.name, kind: monaco.languages.CompletionItemKind.Field,
-                insertText: f.name, detail: f.type, documentation: f.doc, range,
-              })),
-            };
+            // Also find methods defined on this type in the user's code
+            const normalType = normalizeGoType(typeName);
+            const typeMethods = codeMethods.filter(m => m.receiverType === normalType);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const chainSuggestions: any[] = [];
+            if (fields) {
+              chainSuggestions.push(...fields.map(f => {
+                const isFunc = f.type.startsWith('func');
+                return {
+                  label: f.name,
+                  kind: isFunc ? monaco.languages.CompletionItemKind.Method : monaco.languages.CompletionItemKind.Field,
+                  insertText: f.name,
+                  detail: f.type,
+                  documentation: f.doc,
+                  range,
+                  sortText: isFunc ? '1_' + f.name : '0_' + f.name,
+                };
+              }));
+            }
+            // Add locally defined methods for this type
+            const fieldNames = new Set(chainSuggestions.map(s => s.label as string));
+            for (const mth of typeMethods) {
+              if (!fieldNames.has(mth.name)) {
+                const retPart = mth.returnTypes.length > 0
+                  ? mth.returnTypes.length > 1 ? ' (' + mth.returnTypes.join(', ') + ')' : ' ' + mth.returnTypes[0]
+                  : '';
+                chainSuggestions.push({
+                  label: mth.name,
+                  kind: monaco.languages.CompletionItemKind.Method,
+                  insertText: mth.name,
+                  detail: 'func(' + mth.params + ')' + retPart,
+                  documentation: mth.doc || undefined,
+                  range,
+                  sortText: '1_' + mth.name,
+                });
+              }
+            }
+            if (chainSuggestions.length === 0) return { suggestions: [] };
+            return { suggestions: chainSuggestions };
           }
 
           const structCtx = getStructLiteralCtx(code, offset);
@@ -617,7 +762,136 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
       },
     });
 
-    return () => localProvider.dispose();
+    const localHoverProvider = monaco.languages.registerHoverProvider('go', {
+      provideHover: (model: editor.ITextModel, position: Position) => {
+        try {
+          const code = model.getValue();
+          const offset = model.getOffsetAt(position);
+          const line = model.getLineContent(position.lineNumber);
+          const word = model.getWordAtPosition(position);
+          if (!word) return null;
+
+          const structs = parseStructs(code);
+          const codeMethods = parseMethods(code);
+          const localVars: { name: string; type: string }[] = [];
+          let funcInfo: ReturnType<typeof findEnclosingFunc> = null;
+          const funcBraceIdx = findFuncBraceIndex(code, offset);
+          if (funcBraceIdx >= 0) {
+            funcInfo = findEnclosingFunc(code, funcBraceIdx + 1);
+            if (funcInfo) {
+              funcInfo.bodyCode = code.substring(funcBraceIdx + 1, offset);
+              localVars.push(...parseLocalVars(funcInfo.bodyCode));
+              resolveLocalVarTypesFromCalls(funcInfo.bodyCode, localVars, funcInfo, structs);
+            }
+          }
+
+          const hoverRange = {
+            startLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endLineNumber: position.lineNumber,
+            endColumn: word.endColumn,
+          };
+
+          const beforeWord = line.substring(0, word.startColumn - 1);
+          const dotMatch = beforeWord.match(/([\w.]+)\.\s*$/);
+
+          if (dotMatch) {
+            const parts = dotMatch[1].split('.').filter((p: string) => p.length > 0);
+            const objType = resolveMemberChainType(parts, funcInfo, localVars, structs);
+            if (!objType) return null;
+            const normalType = normalizeGoType(objType);
+
+            // First check locally defined methods on this type
+            const localMethod = codeMethods.find(m => m.receiverType === normalType && m.name === word.word);
+            if (localMethod) {
+              let content = '```go\n' + localMethod.signature + '\n```';
+              if (localMethod.doc) content += '\n\n' + localMethod.doc;
+              // Show return type struct fields
+              const mainRet = localMethod.returnTypes.find(t => t !== 'error');
+              if (mainRet) {
+                const retFields = getFieldsForType(normalizeGoType(mainRet), structs);
+                if (retFields && retFields.length > 0) {
+                  content += '\n\nReturns `' + normalizeGoType(mainRet) + '`:\n';
+                  content += retFields.map(f => '- `' + f.name + '` `' + f.type + '`' + (f.doc ? ' — ' + f.doc : '')).join('\n');
+                }
+              }
+              return { range: hoverRange, contents: [{ value: content }] };
+            }
+
+            // Then check fields/methods from completions
+            const fields = getFieldsForType(objType, structs);
+            if (!fields) return null;
+            const field = fields.find(f => f.name === word.word);
+            if (!field) return null;
+
+            let content = '';
+            if (field.type.startsWith('func')) {
+              content = '```go\nfunc ' + word.word + field.type.substring(4) + '\n```';
+              if (field.doc) content += '\n\n' + field.doc;
+              const retTypes = parseFuncReturnTypes(field.type);
+              const mainRet = retTypes.find(t => t !== 'error');
+              if (mainRet) {
+                const retFields = getFieldsForType(normalizeGoType(mainRet), structs);
+                if (retFields && retFields.length > 0) {
+                  content += '\n\nReturns `' + normalizeGoType(mainRet) + '`:\n';
+                  content += retFields.map(f => '- `' + f.name + '` `' + f.type + '`' + (f.doc ? ' — ' + f.doc : '')).join('\n');
+                }
+              }
+            } else {
+              content = '```go\n' + word.word + ' ' + field.type + '\n```';
+              if (field.doc) content += '\n\n' + field.doc;
+              const subFields = getFieldsForType(normalizeGoType(field.type), structs);
+              if (subFields && subFields.length > 0) {
+                const hasMethodFields = subFields.some(f => f.type.startsWith('func'));
+                content += '\n\n' + (hasMethodFields ? 'Fields / Methods' : 'Fields') + ':\n';
+                content += subFields.map(f => '- `' + f.name + '` `' + f.type + '`' + (f.doc ? ' — ' + f.doc : '')).join('\n');
+              }
+            }
+
+            return { range: hoverRange, contents: [{ value: content }] };
+          }
+
+          // Check if hovering on a variable, parameter, or receiver
+          const varType = resolveVarType(word.word, funcInfo, localVars);
+          if (varType) {
+            let rawType = varType;
+            if (funcInfo?.receiver?.name === word.word) {
+              rawType = '*' + funcInfo.receiver.type;
+            } else {
+              const param = funcInfo?.params.find(p => p.name === word.word);
+              if (param) { rawType = param.type; }
+            }
+
+            let content = '```go\n' + word.word + ' ' + rawType + '\n```';
+            const fields = getFieldsForType(varType, structs);
+            if (fields && fields.length > 0) {
+              const normalFields = fields.filter(f => !f.type.startsWith('func'));
+              const methodFields = fields.filter(f => f.type.startsWith('func'));
+              if (normalFields.length > 0) {
+                content += '\n\nFields:\n';
+                content += normalFields.map(f => '- `' + f.name + '` `' + f.type + '`' + (f.doc ? ' — ' + f.doc : '')).join('\n');
+              }
+              if (methodFields.length > 0) {
+                content += '\n\nMethods:\n';
+                content += methodFields.map(f => '- `' + f.name + '` `' + f.type + '`' + (f.doc ? ' — ' + f.doc : '')).join('\n');
+              }
+            }
+
+            return { range: hoverRange, contents: [{ value: content }] };
+          }
+
+          return null;
+        } catch (e) {
+          console.error('[CodeEditor] local hover error:', e);
+          return null;
+        }
+      },
+    });
+
+    return () => {
+      localProvider.dispose();
+      localHoverProvider.dispose();
+    };
   }, [isMounted]);
 
   const handleBeforeMount = (monaco: Monaco) => {
