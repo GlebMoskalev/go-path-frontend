@@ -5,7 +5,7 @@ import {
   ChevronRight, ChevronLeft, Play, Sparkles, CheckCircle2, AlertCircle,
   Lightbulb, ChevronDown, History, XCircle
 } from 'lucide-react';
-import { fetchProjectStep, submitProjectStep, analyzeProjectStep, fetchProject, type ProjectStepDetail, type ProjectSummary } from '../api';
+import { fetchProjectStep, submitProjectStep, analyzeProjectStep, analyzeErrorProject, fetchProject, type ProjectStepDetail, type ProjectSummary } from '../api';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { CodeEditor } from '../components/CodeEditor';
 import { TestResults, type TestResult } from '../components/TestResults';
@@ -62,6 +62,7 @@ export function ProjectStepPage() {
   const [submitted, setSubmitted] = useState(false);
   const [aiRecommendation, setAiRecommendation] = useState('');
   const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [aiMode, setAiMode] = useState<'solution' | 'error' | null>(null);
   const [activeTab, setActiveTab] = useState<'tests' | 'ai'>('tests');
   const [nav, setNav] = useState<StepNav>({ prev: null, next: null });
   const [openHints, setOpenHints] = useState<number[]>([]);
@@ -169,12 +170,25 @@ export function ProjectStepPage() {
   };
 
   const handleGetAI = async () => {
-    if (!projectId || !stepId || !aiEnabled) return;
+    if (!projectId || !stepId) return;
     setIsLoadingAI(true);
     setActiveTab('ai');
     try {
-      const result = await analyzeProjectStep(projectId, stepId, code);
-      setAiRecommendation(result.recommendation);
+      if (allPassed && !codeChanged) {
+        // Tests passed — analyze the solution
+        setAiMode('solution');
+        const result = await analyzeProjectStep(projectId, stepId, code);
+        setAiRecommendation(result.recommendation);
+      } else if (hasFailed) {
+        // Tests failed — analyze the error
+        setAiMode('error');
+        const errorText = testResults
+          .filter((r) => !r.passed)
+          .map((r) => r.output)
+          .join('\n');
+        const result = await analyzeErrorProject(projectId, stepId, code, errorText);
+        setAiRecommendation(result.analysis);
+      }
     } catch {
       setAiRecommendation('Не удалось получить рекомендации. Попробуйте позже.');
     } finally {
@@ -203,8 +217,9 @@ export function ProjectStepPage() {
   }
 
   const allPassed = testResults.length > 0 && testResults.every((r) => r.passed);
+  const hasFailed = testResults.length > 0 && testResults.some((r) => !r.passed);
   const codeChanged = allPassed && lastSubmittedCodeRef.current !== null && code !== lastSubmittedCodeRef.current;
-  const aiEnabled = allPassed && !codeChanged;
+  const aiEnabled = (allPassed && !codeChanged) || hasFailed;
 
   return (
     <div style={{ background: 'var(--go-bg)', height: 'calc(100vh - 56px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -438,21 +453,21 @@ export function ProjectStepPage() {
 
               <button
                 onClick={handleGetAI} disabled={!aiEnabled || isLoadingAI}
-                title={codeChanged ? 'Код изменён — запустите тесты заново' : !allPassed ? 'AI-анализ доступен после успешного решения' : 'AI-анализ'}
+                title={codeChanged ? 'Код изменён — запустите тесты заново' : allPassed ? 'AI-анализ решения' : hasFailed ? 'AI-анализ ошибок' : 'Запустите тесты для AI-анализа'}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px',
                   borderRadius: '8px', background: 'transparent', border: '1px solid',
-                  borderColor: aiEnabled ? 'var(--go-amber)' : 'var(--go-border-2)',
-                  color: aiEnabled ? 'var(--go-amber)' : 'var(--go-subtle)',
+                  borderColor: aiEnabled ? (hasFailed ? 'var(--go-red)' : 'var(--go-amber)') : 'var(--go-border-2)',
+                  color: aiEnabled ? (hasFailed ? 'var(--go-red)' : 'var(--go-amber)') : 'var(--go-subtle)',
                   fontSize: '12px', fontWeight: 600,
                   cursor: aiEnabled && !isLoadingAI ? 'pointer' : 'not-allowed',
                   opacity: aiEnabled ? 1 : 0.5, fontFamily: 'Manrope, sans-serif',
                 }}
-                onMouseEnter={(e) => { if (aiEnabled && !isLoadingAI) e.currentTarget.style.background = 'rgba(245,158,11,0.08)'; }}
+                onMouseEnter={(e) => { if (aiEnabled && !isLoadingAI) e.currentTarget.style.background = hasFailed ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)'; }}
                 onMouseLeave={(e) => { if (aiEnabled && !isLoadingAI) e.currentTarget.style.background = 'transparent'; }}
               >
                 <Sparkles size={12} />
-                {isLoadingAI ? 'Анализ...' : 'AI'}
+                {isLoadingAI ? 'Анализ...' : hasFailed ? 'Анализ ошибок' : 'Анализ решения'}
               </button>
 
               {allPassed && (
@@ -489,14 +504,14 @@ export function ProjectStepPage() {
                 <div>
                   {isLoadingAI ? (
                     <div style={{ textAlign: 'center', padding: '32px 16px' }}>
-                      <div style={{ width: '28px', height: '28px', border: '3px solid var(--go-border-2)', borderTopColor: 'var(--go-amber)', borderRadius: '50%', margin: '0 auto 12px' }} className="animate-spin" />
-                      <div style={{ fontSize: '13px', color: 'var(--go-muted)' }}>Анализируем решение...</div>
+                      <div style={{ width: '28px', height: '28px', border: '3px solid var(--go-border-2)', borderTopColor: aiMode === 'error' ? 'var(--go-red)' : 'var(--go-amber)', borderRadius: '50%', margin: '0 auto 12px' }} className="animate-spin" />
+                      <div style={{ fontSize: '13px', color: 'var(--go-muted)' }}>{aiMode === 'error' ? 'Анализируем ошибки...' : 'Анализируем решение...'}</div>
                     </div>
                   ) : aiRecommendation ? (
-                    <div style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '10px', padding: '14px' }}>
+                    <div style={{ background: aiMode === 'error' ? 'rgba(239,68,68,0.06)' : 'rgba(245,158,11,0.06)', border: `1px solid ${aiMode === 'error' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)'}`, borderRadius: '10px', padding: '14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-                        <Sparkles size={14} style={{ color: 'var(--go-amber)' }} />
-                        <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--go-amber)' }}>AI-анализ решения</span>
+                        {aiMode === 'error' ? <AlertCircle size={14} style={{ color: 'var(--go-red)' }} /> : <Sparkles size={14} style={{ color: 'var(--go-amber)' }} />}
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: aiMode === 'error' ? 'var(--go-red)' : 'var(--go-amber)' }}>{aiMode === 'error' ? 'AI-анализ ошибок' : 'AI-анализ решения'}</span>
                       </div>
                       <MarkdownRenderer content={aiRecommendation} />
                     </div>
@@ -504,7 +519,7 @@ export function ProjectStepPage() {
                     <div style={{ textAlign: 'center', padding: '32px 16px' }}>
                       <AlertCircle size={28} style={{ color: 'var(--go-subtle)', marginBottom: '10px' }} />
                       <div style={{ fontSize: '13px', color: 'var(--go-muted)' }}>
-                        {aiEnabled ? 'Нажмите «AI» чтобы получить рекомендации' : codeChanged ? 'Код изменён — запустите тесты заново' : 'AI-анализ доступен после успешного решения'}
+                        {aiEnabled ? 'Нажмите «Анализ решения» чтобы получить рекомендации' : codeChanged ? 'Код изменён — запустите тесты заново' : hasFailed ? 'Нажмите «Анализ ошибок» чтобы понять причину ошибки' : 'Запустите тесты для AI-анализа'}
                       </div>
                     </div>
                   )}

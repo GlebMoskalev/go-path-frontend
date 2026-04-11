@@ -163,6 +163,10 @@ export interface AnalysisResult {
   recommendation: string;
 }
 
+export interface ErrorAnalysisResult {
+  analysis: string;
+}
+
 export interface CompletionField {
   name: string;
   type: string;
@@ -359,6 +363,20 @@ export function analyzeProjectStep(projectSlug: string, stepSlug: string, code: 
   return apiFetch<AnalysisResult>(
     `/api/analyze/project/${encodeURIComponent(projectSlug)}/${encodeURIComponent(stepSlug)}`,
     { method: 'POST', body: JSON.stringify({ code }) }
+  );
+}
+
+export function analyzeErrorTask(chapterSlug: string, taskSlug: string, code: string, error: string) {
+  return apiFetch<ErrorAnalysisResult>(
+    `/api/analyze/error/task/${encodeURIComponent(chapterSlug)}/${encodeURIComponent(taskSlug)}`,
+    { method: 'POST', body: JSON.stringify({ code, error }) }
+  );
+}
+
+export function analyzeErrorProject(projectSlug: string, stepSlug: string, code: string, error: string) {
+  return apiFetch<ErrorAnalysisResult>(
+    `/api/analyze/error/project/${encodeURIComponent(projectSlug)}/${encodeURIComponent(stepSlug)}`,
+    { method: 'POST', body: JSON.stringify({ code, error }) }
   );
 }
 
