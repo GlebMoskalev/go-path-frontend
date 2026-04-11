@@ -1,0 +1,81 @@
+name: Deploy Frontend to VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        run: pnpm build
+
+      - name: Prepare deployment archive
+        run: |
+          tar -czf frontend.tar.gz dist/
+
+      - name: Copy archive to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "frontend.tar.gz"
+          target: "/opt/go-path-frontend"
+
+      - name: Extract archive and reload nginx
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/go-path-frontend
+
+            # Backup current dist (keep last 3)
+            if [ -d "dist" ]; then
+              mv dist dist_backup_$(date +%Y%m%d_%H%M%S)
+            fi
+            ls -dt dist_backup_* 2>/dev/null | tail -n +4 | xargs rm -rf 2>/dev/null || true
+
+            # Extract new version
+            tar -xzf frontend.tar.gz
+            rm frontend.tar.gz
+
+            # Set permissions for nginx
+            sudo chown -R www-data:www-data /opt/go-path-frontend/dist
+            sudo chmod -R 755 /opt/go-path-frontend/dist
+
+            # Reload nginx
+            sudo systemctl reload nginx
