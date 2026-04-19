@@ -142,17 +142,6 @@ export function TheoryLessonPage() {
           <span style={{ fontSize: '13px', color: 'var(--go-text)' }}>{lesson.title}</span>
         </div>
 
-        {/* Lesson header */}
-        <div style={{ marginBottom: '32px' }}>
-          <div style={{ fontSize: '11px', color: 'var(--go-subtle)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
-            Урок {lesson.order}
-          </div>
-          <h1 style={{ fontSize: '32px', fontWeight: 800, color: 'var(--go-text)', letterSpacing: '-0.03em', marginBottom: '8px' }}>
-            {lesson.title}
-          </h1>
-          <p style={{ fontSize: '15px', color: 'var(--go-muted)' }}>{lesson.description}</p>
-        </div>
-
         {/* Content */}
         <MarkdownRenderer content={lesson.content} />
 

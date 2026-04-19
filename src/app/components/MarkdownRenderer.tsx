@@ -29,12 +29,21 @@ function parseInlineCode(text: string, keyPrefix: string): React.ReactNode[] {
   );
 }
 
+function parseItalic(text: string, keyPrefix: string): React.ReactNode[] {
+  const parts = text.split(/\*([^*]+)\*/);
+  return parts.flatMap((part, i) =>
+    i % 2 === 1
+      ? [<em key={`${keyPrefix}i${i}`} style={{ fontStyle: 'italic' }}>{parseInlineCode(part, `${keyPrefix}i${i}-`)}</em>]
+      : parseInlineCode(part, `${keyPrefix}${i}-`)
+  );
+}
+
 function parseBold(text: string): React.ReactNode[] {
   const parts = text.split(/\*\*([^*]+)\*\*/);
   return parts.flatMap((part, i) =>
     i % 2 === 1
-      ? [<strong key={`b${i}`} style={{ color: 'var(--go-text)', fontWeight: 700 }}>{part}</strong>]
-      : parseInlineCode(part, `${i}-`)
+      ? [<strong key={`b${i}`} style={{ color: 'var(--go-text)', fontWeight: 700 }}>{parseItalic(part, `b${i}-`)}</strong>]
+      : parseItalic(part, `${i}-`)
   );
 }
 
@@ -66,7 +75,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
     if (line.startsWith('# ')) {
       elements.push(
         <h1 key={i} style={{ fontSize: '28px', fontWeight: 800, color: 'var(--go-text)', marginTop: '8px', marginBottom: '16px', letterSpacing: '-0.02em' }}>
-          {line.slice(2)}
+          {parseBold(line.slice(2))}
         </h1>
       );
       i++;
@@ -76,7 +85,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
     if (line.startsWith('## ')) {
       elements.push(
         <h2 key={i} style={{ fontSize: '20px', fontWeight: 700, color: 'var(--go-text)', marginTop: '28px', marginBottom: '10px', letterSpacing: '-0.01em' }}>
-          {line.slice(3)}
+          {parseBold(line.slice(3))}
         </h2>
       );
       i++;
@@ -86,7 +95,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
     if (line.startsWith('### ')) {
       elements.push(
         <h3 key={i} style={{ fontSize: '16px', fontWeight: 700, color: 'var(--go-text-secondary)', marginTop: '20px', marginBottom: '8px' }}>
-          {line.slice(4)}
+          {parseBold(line.slice(4))}
         </h3>
       );
       i++;
