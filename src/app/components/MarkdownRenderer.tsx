@@ -3,6 +3,7 @@ import { CodeBlock } from './CodeBlock';
 
 interface MarkdownRendererProps {
   content: string;
+  textStyle?: React.CSSProperties;
 }
 
 function parseInlineCode(text: string, keyPrefix: string): React.ReactNode[] {
@@ -38,7 +39,7 @@ function parseItalic(text: string, keyPrefix: string): React.ReactNode[] {
   );
 }
 
-function parseBold(text: string): React.ReactNode[] {
+export function parseBold(text: string): React.ReactNode[] {
   const parts = text.split(/\*\*([^*]+)\*\*/);
   return parts.flatMap((part, i) =>
     i % 2 === 1
@@ -47,7 +48,7 @@ function parseBold(text: string): React.ReactNode[] {
   );
 }
 
-export function MarkdownRenderer({ content }: MarkdownRendererProps) {
+export function MarkdownRenderer({ content, textStyle }: MarkdownRendererProps) {
   const lines = content.split('\n');
   const elements: React.ReactNode[] = [];
   let i = 0;
@@ -123,7 +124,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
               <tr style={{ borderBottom: '1px solid var(--go-border)' }}>
                 {headerCells.map((cell, ci) => (
                   <th key={ci} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--go-muted)', fontWeight: 600, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    {cell.trim()}
+                    {parseBold(cell.trim())}
                   </th>
                 ))}
               </tr>
@@ -171,7 +172,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
     }
 
     elements.push(
-      <p key={i} style={{ color: 'var(--go-text-secondary)', lineHeight: '1.75', marginBottom: '4px' }}>
+      <p key={i} style={{ color: 'var(--go-text-secondary)', lineHeight: '1.75', marginBottom: '4px', ...textStyle }}>
         {parseBold(line)}
       </p>
     );

@@ -58,7 +58,7 @@ export function AnimatedSection({
       ref={ref}
       initial="hidden"
       whileInView="visible"
-      viewport={{ once: true, amount: 0.15 }}
+      viewport={{ once: true, amount: 0 }}
       variants={variants[variant]}
       transition={{ duration, delay, ease: [0.25, 0.1, 0.25, 1] }}
       className={className}
@@ -80,7 +80,7 @@ export function StaggerContainer({ children, className, style }: StaggerContaine
     <motion.div
       initial="hidden"
       whileInView="visible"
-      viewport={{ once: true, amount: 0.1 }}
+      viewport={{ once: true, amount: 0 }}
       variants={staggerContainer}
       className={className}
       style={style}

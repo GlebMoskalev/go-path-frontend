@@ -11,6 +11,8 @@ import {
 } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { AnimatedSection } from '../components/AnimatedSection';
+import { MarkdownRenderer, parseBold } from '../components/MarkdownRenderer';
+
 
 type Phase = 'setup' | 'quiz' | 'result';
 
@@ -58,6 +60,14 @@ export function QuizPage() {
   const totalQuestions = chapters
     .filter((c) => selectedChapters.includes(c.slug))
     .reduce((sum, c) => sum + c.question_count, 0);
+
+  useEffect(() => {
+    if (totalQuestions > 0) {
+      setLimit(totalQuestions);
+    } else {
+      setLimit(10);
+    }
+  }, [totalQuestions]);
 
   const startQuiz = async () => {
     if (!user) {
@@ -665,9 +675,12 @@ export function QuizPage() {
               }}
             >
               <div style={{ padding: '28px' }}>
-                <p style={{ fontSize: '18px', fontWeight: 700, color: 'var(--go-text)', lineHeight: '1.5' }}>
-                  {currentQuestion.question}
-                </p>
+                <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--go-text)', lineHeight: '1.5' }}>
+                  <MarkdownRenderer 
+                    content={currentQuestion.question} 
+                    textStyle={{ fontSize: '18px', fontWeight: 700, color: 'var(--go-text)', lineHeight: '1.5', margin: 0 }} 
+                  />
+                </div>
               </div>
 
               <div style={{ padding: '0 28px 28px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -726,8 +739,8 @@ export function QuizPage() {
                         optionLetters[idx]
                       )}
                     </span>
-                    <span style={{ fontSize: '14px', color: 'var(--go-text-secondary)', textAlign: 'left', fontFamily: 'Manrope, sans-serif' }}>
-                      {option}
+                    <span style={{ fontSize: '14px', color: 'var(--go-text-secondary)', textAlign: 'left', fontFamily: 'Manrope, sans-serif', lineHeight: '1.5' }}>
+                      {parseBold(option)}
                     </span>
                   </motion.button>
                 ))}
@@ -757,9 +770,12 @@ export function QuizPage() {
                     {answerResult.correct ? 'Правильно!' : 'Неправильно'}
                   </span>
                 </div>
-                <p style={{ fontSize: '14px', color: 'var(--go-text-secondary)', lineHeight: '1.65', margin: 0, whiteSpace: 'pre-wrap' }}>
-                  {answerResult.explanation}
-                </p>
+                <div style={{ fontSize: '14px', color: 'var(--go-text-secondary)', lineHeight: '1.65', margin: 0 }}>
+                  <MarkdownRenderer 
+                    content={answerResult.explanation} 
+                    textStyle={{ margin: 0 }} 
+                  />
+                </div>
               </motion.div>
             )}
 
