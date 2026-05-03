@@ -6,27 +6,56 @@ interface MarkdownRendererProps {
   textStyle?: React.CSSProperties;
 }
 
+function parseLinks(text: string, keyPrefix: string): React.ReactNode[] {
+  const result: React.ReactNode[] = [];
+  const regex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      result.push(text.slice(lastIndex, match.index));
+    }
+    result.push(
+      <a
+        key={`${keyPrefix}l${match.index}`}
+        href={match[2]}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: 'var(--gp-accent, #00ADD8)', textDecoration: 'underline', wordBreak: 'break-all' }}
+      >
+        {match[1]}
+      </a>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    result.push(text.slice(lastIndex));
+  }
+
+  return result;
+}
+
 function parseInlineCode(text: string, keyPrefix: string): React.ReactNode[] {
   const parts = text.split(/`([^`]+)`/);
-  return parts.map((part, i) =>
-    i % 2 === 1 ? (
-      <code
-        key={`${keyPrefix}c${i}`}
-        style={{
-          fontFamily: "var(--gp-font-mono)",
-          fontSize: '0.86em',
-          background: 'var(--gp-surface-muted)',
-          border: '1px solid var(--gp-border)',
-          borderRadius: '4px',
-          padding: '1px 6px',
-          color: 'var(--gp-ink)',
-        }}
-      >
-        {part}
-      </code>
-    ) : (
-      part
-    )
+  return parts.flatMap((part, i) =>
+    i % 2 === 1
+      ? [<code
+          key={`${keyPrefix}c${i}`}
+          style={{
+            fontFamily: "var(--gp-font-mono)",
+            fontSize: '0.86em',
+            background: 'var(--gp-surface-muted)',
+            border: '1px solid var(--gp-border)',
+            borderRadius: '4px',
+            padding: '1px 6px',
+            color: 'var(--gp-ink)',
+          }}
+        >
+          {part}
+        </code>]
+      : parseLinks(part, `${keyPrefix}${i}-`)
   );
 }
 
