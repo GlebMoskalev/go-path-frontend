@@ -11,6 +11,7 @@ import {
 } from '../api';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { useAuth } from '../context/AuthContext';
+import { useGopherMood } from '../context/GopherMoodContext';
 import { Button, Container } from '../design';
 import { dur, ease } from '../design/motion';
 import { TheoryTOC } from '../components/theory/TheoryTOC';
@@ -61,6 +62,7 @@ function buildNav(chapters: TheoryChapter[], chapterSlug: string, lessonSlug: st
 export function TheoryLessonPage() {
   const { chapterId, lessonId } = useParams<{ chapterId: string; lessonId: string }>();
   const { user } = useAuth();
+  const { setMood } = useGopherMood();
 
   const [lesson, setLesson] = useState<TheoryLesson | null>(null);
   const [chapters, setChapters] = useState<TheoryChapter[]>([]);
@@ -105,6 +107,7 @@ export function TheoryLessonPage() {
     try {
       await completeTheoryLesson(chapterId, lessonId);
       setIsCompleted(true);
+      setMood('happy', 3000);
       // Optimistically reflect the change in TOC + chapter progress
       setChapters((prev) =>
         prev.map((ch) => {
