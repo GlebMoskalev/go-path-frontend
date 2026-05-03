@@ -2,156 +2,240 @@
 @import './tailwind.css';
 @import './theme.css';
 
-/* ===== Go Path Design Tokens ===== */
-
-:root {
-  /* Light theme (default) */
-  --go-bg: #FFFFFF;
-  --go-surface: #F7F8FB;
-  --go-surface-2: #EEF0F6;
-  --go-border: #E0E3EB;
-  --go-border-2: #CDD1DC;
-  --go-cyan: #0091B5;
-  --go-cyan-hover: #007A99;
-  --go-cyan-muted: rgba(0, 145, 181, 0.08);
-  --go-amber: #D97706;
-  --go-green: #059669;
-  --go-green-muted: rgba(5, 150, 105, 0.08);
-  --go-red: #DC2626;
-  --go-text: #111827;
-  --go-text-secondary: #374151;
-  --go-muted: #6B7280;
-  --go-subtle: #9CA3AF;
-
-  --go-header-bg: rgba(255, 255, 255, 0.85);
-  --go-code-bg: #FAFBFE;
-  --go-code-header: #F0F2F7;
-  --go-code-border: #DFE2EA;
-  --go-code-text: #1E293B;
-  --go-code-muted: #8B95A5;
-  --go-code-line-num: #B4BBC8;
-
-  font-family: 'Manrope', system-ui, sans-serif;
-
-  /* Bridge to shadcn tokens */
-  --background: #FFFFFF;
-  --foreground: #111827;
-  --card: #F7F8FB;
-  --card-foreground: #111827;
-  --border: #E0E3EB;
-  --muted-foreground: #6B7280;
-}
-
-.dark {
-  --go-bg: #0B0D14;
-  --go-surface: #12141E;
-  --go-surface-2: #181B28;
-  --go-border: #1E2236;
-  --go-border-2: #282D45;
-  --go-cyan: #00ADD8;
-  --go-cyan-hover: #33C4E8;
-  --go-cyan-muted: rgba(0, 173, 216, 0.1);
-  --go-amber: #F59E0B;
-  --go-green: #10B981;
-  --go-green-muted: rgba(16, 185, 129, 0.1);
-  --go-red: #EF4444;
-  --go-text: #F1F5F9;
-  --go-text-secondary: #CBD5E1;
-  --go-muted: #94A3B8;
-  --go-subtle: #64748B;
-
-  --go-header-bg: rgba(11, 13, 20, 0.85);
-  --go-code-bg: #0D1017;
-  --go-code-header: #151821;
-  --go-code-border: #1E2236;
-  --go-code-text: #E2E8F0;
-  --go-code-muted: #94A3B8;
-  --go-code-line-num: #2D3748;
-
-  --background: #0B0D14;
-  --foreground: #F1F5F9;
-  --card: #12141E;
-  --card-foreground: #F1F5F9;
-  --border: #1E2236;
-  --muted-foreground: #94A3B8;
-}
-
-/* ===== Base ===== */
+/* ============================================================
+   Go Path · Global styles
+   ============================================================ */
 
 body {
-  background-color: var(--go-bg);
-  color: var(--go-text);
-  font-family: 'Manrope', system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  font-family: var(--gp-font-sans);
 }
 
-/* Grain texture overlay (dark mode only, very subtle) */
-.dark body::before {
+/* Very subtle paper grain — present on light mode only, to give
+   the off-white surface tactile feel without going skeuomorphic. */
+body::before {
   content: '';
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0.02;
+  inset: 0;
   pointer-events: none;
-  z-index: 9999;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-size: 128px 128px;
+  z-index: 0;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 360 360' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 240px 240px;
 }
+.dark body::before { opacity: 0.04; }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: var(--go-bg);
-}
+/* Scrollbar — hairline, calm */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: var(--go-border-2);
-  border-radius: 3px;
+  background: transparent;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--go-subtle);
-}
+*:hover::-webkit-scrollbar-thumb { background: var(--gp-border-strong); background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--gp-ink-4); background-clip: padding-box; }
 
-/* Code fonts */
-code, pre, .code-font {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-}
+/* Code surfaces */
+code, pre, .code-font, .font-mono { font-family: var(--gp-font-mono); }
 
-/* Smooth color transitions for theme switching */
-*,
-*::before,
-*::after {
-  transition-property: color, background-color, border-color, outline-color, box-shadow, opacity;
-  transition-duration: 200ms;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Disable transition on theme toggle to prevent FOUC flash */
+/* Theme transition — only when explicitly switching */
 html.no-transition *,
 html.no-transition *::before,
-html.no-transition *::after {
-  transition: none !important;
+html.no-transition *::after { transition: none !important; }
+
+/* ============================================================
+   Reusable utilities
+   ============================================================ */
+
+.gp-serif { font-family: var(--gp-font-serif); font-feature-settings: 'liga', 'kern'; }
+.gp-mono  { font-family: var(--gp-font-mono); }
+
+/* Editorial display heading (used on hero, section openers) */
+.gp-display {
+  font-family: var(--gp-font-sans);
+  font-weight: 600;
+  letter-spacing: var(--gp-tracking-display);
+  line-height: 0.98;
+  color: var(--gp-ink);
+}
+.gp-display em {
+  font-family: var(--gp-font-serif);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--gp-ink);
 }
 
-/* ===== Animations ===== */
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+/* Eyebrow label — small all-caps tracker */
+.gp-eyebrow {
+  font-size: 11px;
+  letter-spacing: var(--gp-tracking-wide);
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--gp-ink-3);
 }
 
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+/* Hairline divider with center mark */
+.gp-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--gp-border-strong), transparent);
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+/* Card — base surface */
+.gp-card {
+  background: var(--gp-surface);
+  border: 1px solid var(--gp-border);
+  border-radius: var(--gp-radius-lg);
+  box-shadow: var(--gp-shadow-xs);
+}
+.gp-card-interactive {
+  transition: transform var(--gp-dur-base) var(--gp-ease-emphasized),
+              box-shadow var(--gp-dur-base) var(--gp-ease-emphasized),
+              border-color var(--gp-dur-base) var(--gp-ease-standard);
+}
+.gp-card-interactive:hover {
+  border-color: var(--gp-border-strong);
+  box-shadow: var(--gp-shadow-md);
+  transform: translateY(-1px);
+}
+
+/* Buttons — ink primary, ghost secondary */
+.gp-btn {
+  --_pad-y: 9px;
+  --_pad-x: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: var(--_pad-y) var(--_pad-x);
+  font-family: var(--gp-font-sans);
+  font-weight: 500;
+  font-size: var(--gp-text-sm);
+  letter-spacing: -0.005em;
+  border-radius: var(--gp-radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: background var(--gp-dur-fast) var(--gp-ease-standard),
+              color var(--gp-dur-fast) var(--gp-ease-standard),
+              border-color var(--gp-dur-fast) var(--gp-ease-standard),
+              box-shadow var(--gp-dur-fast) var(--gp-ease-standard),
+              transform var(--gp-dur-fast) var(--gp-ease-standard);
+}
+.gp-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.gp-btn-primary {
+  background: var(--gp-ink);
+  color: var(--gp-bg);
+  box-shadow: var(--gp-shadow-sm), var(--gp-shadow-inset);
+}
+.gp-btn-primary:hover { background: var(--gp-ink-2); transform: translateY(-1px); }
+.gp-btn-primary:active { transform: translateY(0); }
+
+.gp-btn-accent {
+  background: var(--gp-accent);
+  color: var(--gp-accent-ink);
+  box-shadow: var(--gp-shadow-sm);
+}
+.gp-btn-accent:hover { background: var(--gp-accent-hover); }
+
+.gp-btn-ghost {
+  background: transparent;
+  color: var(--gp-ink-2);
+  border-color: var(--gp-border);
+}
+.gp-btn-ghost:hover {
+  background: var(--gp-surface);
+  border-color: var(--gp-border-strong);
+  color: var(--gp-ink);
+}
+
+.gp-btn-sm { --_pad-y: 6px; --_pad-x: 12px; font-size: var(--gp-text-xs); border-radius: var(--gp-radius-sm); }
+.gp-btn-lg { --_pad-y: 12px; --_pad-x: 22px; font-size: var(--gp-text-base); border-radius: var(--gp-radius-md); }
+
+/* Badge / chip */
+.gp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: var(--gp-tracking-wide);
+  text-transform: uppercase;
+  color: var(--gp-ink-3);
+  background: var(--gp-surface-muted);
+  border: 1px solid var(--gp-border);
+  border-radius: 999px;
+}
+
+/* The "Path" motif — a dashed connecting line. Used SPARINGLY as a
+   visual anchor (e.g. roadmap, section openers). Not decoration. */
+.gp-path-line {
+  background-image: radial-gradient(circle, var(--gp-border-strong) 1px, transparent 1px);
+  background-size: 6px 6px;
+}
+.gp-path-line-h { height: 1px; background-image: radial-gradient(circle, var(--gp-border-strong) 1px, transparent 1px); background-size: 8px 1px; }
+.gp-path-line-v { width: 1px; background-image: radial-gradient(circle, var(--gp-border-strong) 1px, transparent 1px); background-size: 1px 8px; }
+
+/* Container */
+.gp-container { max-width: 1180px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
+.gp-container-narrow { max-width: 760px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
+
+/* Animations */
+@keyframes gp-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+@keyframes gp-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes gp-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes gp-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+.animate-spin { animation: gp-spin 0.9s linear infinite; }
+
+/* Skeleton loader */
+.gp-skel {
+  background: linear-gradient(
+    90deg,
+    var(--gp-surface-muted) 0%,
+    var(--gp-surface-strong) 50%,
+    var(--gp-surface-muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: gp-shimmer 1.6s ease-in-out infinite;
+  border-radius: var(--gp-radius-sm);
+}
+
+/* Editorial reading rhythm — applied around any MarkdownRenderer usage. */
+.gp-prose {
+  color: var(--gp-ink-2);
+  font-size: 16px;
+  line-height: 1.7;
+  font-feature-settings: 'kern', 'liga', 'cv11';
+}
+.gp-prose > * + * { margin-top: 0.7em; }
+.gp-prose h1 + *, .gp-prose h2 + *, .gp-prose h3 + * { margin-top: 0.4em; }
+.gp-prose strong { font-weight: 600; color: var(--gp-ink); }
+.gp-prose a {
+  color: var(--gp-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--gp-border-strong);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: text-decoration-color var(--gp-dur-fast) var(--gp-ease-standard);
+}
+.gp-prose a:hover { text-decoration-color: var(--gp-ink); }
+
+/* Selection inside reader: ink, not accent. */
+.gp-prose ::selection { background: var(--gp-ink); color: var(--gp-bg); }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

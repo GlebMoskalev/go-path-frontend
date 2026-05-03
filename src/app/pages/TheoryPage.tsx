@@ -1,279 +1,244 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router';
-import { ChevronRight, ChevronDown, Clock, CheckCircle2, BookOpen, Lock } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router';
+import { motion } from 'motion/react';
+import { Check, ArrowUpRight, BookOpen } from 'lucide-react';
 import { fetchTheoryChapters, type TheoryChapter } from '../api';
-import { ProgressBar } from '../components/ProgressBar';
-import { useAuth } from '../context/AuthContext';
-import { AnimatedSection, StaggerContainer, StaggerItem } from '../components/AnimatedSection';
+import { Container, Eyebrow, ProgressTrack, staggerParent, staggerChild } from '../design';
 
 export function TheoryPage() {
-  const { user } = useAuth();
-  const [expandedChapters, setExpandedChapters] = useState<string[]>(['01-basics']);
   const [chapters, setChapters] = useState<TheoryChapter[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
 
   useEffect(() => {
     fetchTheoryChapters()
-      .then(setChapters)
+      .then((data) => setChapters([...data].sort((a, b) => a.order - b.order)))
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, []);
 
-  const toggleChapter = (slug: string) => {
-    setExpandedChapters((prev) =>
-      prev.includes(slug) ? prev.filter((c) => c !== slug) : [...prev, slug]
-    );
-  };
+  const totals = useMemo(() => {
+    let lessons = 0;
+    let completed = 0;
+    chapters.forEach((c) => {
+      lessons += c.lessons.length;
+      completed += c.progress?.completed ?? 0;
+    });
+    return { lessons, completed, ratio: lessons ? completed / lessons : 0 };
+  }, [chapters]);
 
-  if (isLoading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 56px)', background: 'var(--go-bg)' }}>
-        <div style={{ fontSize: '14px', color: 'var(--go-muted)' }}>Загрузка...</div>
-      </div>
-    );
-  }
+  // Find first incomplete lesson — for the "Continue reading" CTA
+  const continueAt = useMemo(() => {
+    for (const c of chapters) {
+      const lesson = c.lessons.find((l) => !l.completed);
+      if (lesson) return { chapter: c, lesson };
+    }
+    return null;
+  }, [chapters]);
 
   return (
-    <div style={{ display: 'flex', minHeight: 'calc(100vh - 56px)', background: 'var(--go-bg)' }}>
-      {/* Sidebar */}
-      <aside
-        style={{
-          width: '280px',
-          flexShrink: 0,
-          borderRight: '1px solid var(--go-border)',
-          background: 'var(--go-surface)',
-          position: 'sticky',
-          top: '56px',
-          height: 'calc(100vh - 56px)',
-          overflowY: 'auto',
-          padding: '16px 0',
-        }}
-        className="hidden md:block"
-      >
-        <div style={{ padding: '0 16px 16px', borderBottom: '1px solid var(--go-border)', marginBottom: '8px' }}>
-          <span style={{ fontSize: '11px', color: 'var(--go-subtle)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            Разделы теории
-          </span>
-        </div>
-
-        {chapters.map((chapter) => {
-          const completed = chapter.progress?.completed ?? 0;
-          const isExpanded = expandedChapters.includes(chapter.slug);
-
-          return (
-            <div key={chapter.slug}>
-              <button
-                onClick={() => toggleChapter(chapter.slug)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  width: '100%',
-                  padding: '10px 16px',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--go-surface-2)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+    <div className="min-h-[calc(100vh-60px)]" style={{ background: 'var(--gp-bg)' }}>
+      {/* Page header */}
+      <header className="pt-14 pb-10" style={{ borderBottom: '1px solid var(--gp-border)' }}>
+        <Container>
+          <motion.div initial="hidden" animate="visible" variants={staggerParent(0.06)} className="grid md:grid-cols-12 gap-10 items-end">
+            <div className="md:col-span-7">
+              <motion.div variants={staggerChild}>
+                <Eyebrow>Раздел · 01</Eyebrow>
+              </motion.div>
+              <motion.h1
+                variants={staggerChild}
+                className="gp-display mt-4"
+                style={{ fontSize: 'clamp(36px, 5vw, 60px)' }}
               >
-                <motion.div
-                  animate={{ rotate: isExpanded ? 90 : 0 }}
-                  transition={{ duration: 0.2 }}
-                  style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}
-                >
-                  <ChevronRight size={14} style={{ color: 'var(--go-muted)' }} />
-                </motion.div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--go-text-secondary)', marginBottom: '2px' }}>
-                    {chapter.title}
-                  </div>
-                  <div style={{ fontSize: '11px', color: 'var(--go-muted)' }}>
-                    {completed}/{chapter.lessons.length} уроков
-                  </div>
-                </div>
-              </button>
-
-              <AnimatePresence initial={false}>
-                {isExpanded && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
-                    style={{ overflow: 'hidden', paddingLeft: '16px' }}
-                  >
-                    {chapter.lessons.map((lesson) => (
-                      <Link
-                        key={lesson.slug}
-                        to={`/theory/${chapter.slug}/${lesson.slug}`}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          padding: '8px 16px',
-                          textDecoration: 'none',
-                          borderRadius: '8px',
-                          marginBottom: '2px',
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--go-surface-2)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                      >
-                        {lesson.completed ? (
-                          <CheckCircle2 size={13} style={{ color: 'var(--go-green)', flexShrink: 0 }} />
-                        ) : (
-                          <div
-                            style={{
-                              width: '13px',
-                              height: '13px',
-                              borderRadius: '50%',
-                              border: '1.5px solid var(--go-border-2)',
-                              flexShrink: 0,
-                            }}
-                          />
-                        )}
-                        <span style={{ fontSize: '13px', color: lesson.completed ? 'var(--go-text-secondary)' : 'var(--go-muted)', lineHeight: '1.4' }}>
-                          {lesson.title}
-                        </span>
-                      </Link>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                <em>Теория</em> Go,
+                <br />
+                от основ до конкурентности.
+              </motion.h1>
+              <motion.p variants={staggerChild} className="mt-5 max-w-[58ch] text-[16px]" style={{ color: 'var(--gp-ink-3)' }}>
+                Уроки выстроены последовательно. Читай по порядку или открывай интересующее — каждый урок самодостаточен и оставляет за собой пометку «прочитано».
+              </motion.p>
             </div>
-          );
-        })}
-      </aside>
 
-      {/* Main content */}
-      <main style={{ flex: 1, padding: '40px 40px 80px', maxWidth: '900px' }}>
-        {/* Breadcrumb */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '32px' }}>
-          <span style={{ fontSize: '13px', color: 'var(--go-muted)' }}>Теория</span>
-        </div>
-
-        <h1 style={{ fontSize: '32px', fontWeight: 800, color: 'var(--go-text)', letterSpacing: '-0.03em', marginBottom: '8px' }}>
-          Теория
-        </h1>
-        <p style={{ fontSize: '15px', color: 'var(--go-muted)', marginBottom: '40px' }}>
-          Структурированные уроки по языку Go от основ до продвинутых тем
-        </p>
-
-        {/* Chapters */}
-        <StaggerContainer style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {chapters.map((chapter) => {
-            const completed = chapter.progress?.completed ?? 0;
-            const pct = chapter.lessons.length > 0 ? (completed / chapter.lessons.length) * 100 : 0;
-
-            return (
-              <StaggerItem key={chapter.slug}>
-                <div
-                  style={{
-                    background: 'var(--go-surface)',
-                    border: '1px solid var(--go-border)',
-                    borderRadius: '14px',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {/* Chapter header */}
-                  <div
-                    style={{
-                      padding: '24px',
-                      borderBottom: '1px solid var(--go-border)',
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      justifyContent: 'space-between',
-                      gap: '16px',
-                    }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '11px', color: 'var(--go-subtle)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                          Раздел {chapter.order}
-                        </span>
-                        {completed === chapter.lessons.length && (
-                          <span style={{ fontSize: '11px', color: 'var(--go-green)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <CheckCircle2 size={12} /> Завершён
-                          </span>
-                        )}
-                      </div>
-                      <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--go-text)', marginBottom: '6px', letterSpacing: '-0.01em' }}>
-                        {chapter.title}
-                      </h2>
-                      <p style={{ fontSize: '14px', color: 'var(--go-muted)' }}>{chapter.description}</p>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontSize: '24px', fontWeight: 800, color: pct === 100 ? 'var(--go-green)' : 'var(--go-cyan)', letterSpacing: '-0.02em' }}>
-                        {Math.round(pct)}%
-                      </div>
-                      <div style={{ fontSize: '12px', color: 'var(--go-muted)', marginTop: '2px' }}>
-                        {completed}/{chapter.lessons.length}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div style={{ padding: '0 24px' }}>
-                    <ProgressBar value={pct} color={pct === 100 ? 'var(--go-green)' : 'var(--go-cyan)'} height={3} />
-                  </div>
-
-                  {/* Lessons grid */}
-                  <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px' }}>
-                    {chapter.lessons.map((lesson) => (
-                      <Link
-                        key={lesson.slug}
-                        to={`/theory/${chapter.slug}/${lesson.slug}`}
-                        style={{ textDecoration: 'none' }}
-                      >
-                        <div
-                          style={{
-                            padding: '16px',
-                            borderRadius: '10px',
-                            border: `1px solid ${lesson.completed ? 'var(--go-green-muted)' : 'var(--go-border)'}`,
-                            background: lesson.completed ? 'var(--go-green-muted)' : 'var(--go-bg)',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '8px',
-                          }}
-                          onMouseEnter={(e) => {
-                            (e.currentTarget as HTMLElement).style.borderColor = lesson.completed ? 'var(--go-green)' : 'var(--go-cyan)';
-                            (e.currentTarget as HTMLElement).style.background = 'var(--go-surface)';
-                          }}
-                          onMouseLeave={(e) => {
-                            (e.currentTarget as HTMLElement).style.borderColor = lesson.completed ? 'var(--go-green-muted)' : 'var(--go-border)';
-                            (e.currentTarget as HTMLElement).style.background = lesson.completed ? 'var(--go-green-muted)' : 'var(--go-bg)';
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: '11px', color: 'var(--go-subtle)', fontWeight: 600 }}>
-                              Урок {lesson.order}
-                            </span>
-                            {lesson.completed ? (
-                              <CheckCircle2 size={14} style={{ color: 'var(--go-green)' }} />
-                            ) : (
-                              <BookOpen size={14} style={{ color: 'var(--go-subtle)' }} />
-                            )}
-                          </div>
-                          <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--go-text-secondary)', lineHeight: '1.4' }}>
-                            {lesson.title}
-                          </div>
-                          <div style={{ fontSize: '12px', color: 'var(--go-muted)', lineHeight: '1.4' }}>
-                            {lesson.description}
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
+            {/* Stats column */}
+            <motion.div variants={staggerChild} className="md:col-span-5">
+              <div className="gp-card p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <Eyebrow marker={false}>Прогресс</Eyebrow>
+                  <span className="text-[12px] gp-mono" style={{ color: 'var(--gp-ink-3)' }}>
+                    {isLoading ? '—' : `${totals.completed} из ${totals.lessons}`}
+                  </span>
                 </div>
-              </StaggerItem>
-            );
-          })}
-        </StaggerContainer>
-      </main>
+                <ProgressTrack value={totals.ratio} tone={totals.ratio === 1 ? 'success' : 'ink'} height={3} />
+                {continueAt ? (
+                  <Link
+                    to={`/theory/${continueAt.chapter.slug}/${continueAt.lesson.slug}`}
+                    className="group mt-6 -mx-2 px-2 py-2 rounded-md no-underline flex items-start gap-3 transition-colors"
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--gp-surface-muted)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <span
+                      className="inline-flex items-center justify-center w-9 h-9 rounded-md flex-shrink-0"
+                      style={{ background: 'var(--gp-surface-muted)', color: 'var(--gp-ink-2)' }}
+                    >
+                      <BookOpen size={15} />
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[11px]" style={{ color: 'var(--gp-ink-4)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                        Продолжить с
+                      </span>
+                      <span className="block text-[14px] font-medium truncate" style={{ color: 'var(--gp-ink)' }}>
+                        {continueAt.lesson.title}
+                      </span>
+                      <span className="block text-[12px] truncate" style={{ color: 'var(--gp-ink-3)' }}>
+                        {continueAt.chapter.title}
+                      </span>
+                    </span>
+                    <ArrowUpRight size={14} style={{ color: 'var(--gp-ink-3)' }} className="mt-1.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </Link>
+                ) : !isLoading ? (
+                  <div className="mt-6 text-[13px]" style={{ color: 'var(--gp-ink-3)' }}>
+                    Все уроки прочитаны. Загляни в задачи или возьми проект.
+                  </div>
+                ) : null}
+              </div>
+            </motion.div>
+          </motion.div>
+        </Container>
+      </header>
+
+      {/* Chapters as table of contents */}
+      <Container className="py-12">
+        {isLoading ? (
+          <ChapterIndexSkeleton />
+        ) : (
+          <motion.div initial="hidden" animate="visible" variants={staggerParent(0.06)} className="grid gap-12">
+            {chapters.map((chapter, idx) => (
+              <ChapterSection key={chapter.slug} chapter={chapter} idx={idx + 1} />
+            ))}
+          </motion.div>
+        )}
+      </Container>
     </div>
   );
 }
+
+/* ---------- Chapter section: editorial TOC style ---------- */
+function ChapterSection({ chapter, idx }: { chapter: TheoryChapter; idx: number }) {
+  const completed = chapter.progress?.completed ?? 0;
+  const total = chapter.lessons.length;
+  const ratio = total ? completed / total : 0;
+  const done = ratio === 1;
+
+  return (
+    <motion.section variants={staggerChild} className="grid md:grid-cols-12 gap-8 md:gap-10">
+      {/* Chapter meta column */}
+      <div className="md:col-span-4">
+        <div className="md:sticky md:top-[88px]">
+          <div className="flex items-baseline gap-3">
+            <span className="text-[12px] gp-mono" style={{ color: 'var(--gp-ink-4)' }}>
+              {String(idx).padStart(2, '0')}
+            </span>
+            <span className="flex-1 gp-path-line-h h-px self-center mt-1" />
+            {done && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium" style={{ color: 'var(--gp-success)' }}>
+                <Check size={11} strokeWidth={2.5} /> Завершён
+              </span>
+            )}
+          </div>
+          <h2
+            className="mt-3 font-medium"
+            style={{ fontSize: '22px', letterSpacing: '-0.02em', color: 'var(--gp-ink)', lineHeight: 1.2 }}
+          >
+            {chapter.title}
+          </h2>
+          <p className="mt-2 text-[13.5px]" style={{ color: 'var(--gp-ink-3)', lineHeight: 1.55 }}>
+            {chapter.description}
+          </p>
+          <div className="mt-4">
+            <ProgressTrack value={ratio} tone={done ? 'success' : 'ink'} height={2} />
+            <div className="mt-2 text-[11px] gp-mono" style={{ color: 'var(--gp-ink-4)' }}>
+              {completed}/{total} уроков
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Lesson list */}
+      <ol className="md:col-span-8 list-none p-0 m-0" style={{ borderTop: '1px solid var(--gp-border)' }}>
+        {chapter.lessons.map((lesson, i) => (
+          <li key={lesson.slug} style={{ borderBottom: '1px solid var(--gp-border)' }}>
+            <Link
+              to={`/theory/${chapter.slug}/${lesson.slug}`}
+              className="group flex items-center gap-4 py-4 no-underline"
+              style={{ color: 'var(--gp-ink)' }}
+            >
+              <span
+                className="text-[11px] gp-mono w-7 flex-shrink-0"
+                style={{ color: 'var(--gp-ink-4)' }}
+              >
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <span className="flex-shrink-0">
+                {lesson.completed ? (
+                  <span
+                    className="inline-flex items-center justify-center w-5 h-5 rounded-full"
+                    style={{ background: 'var(--gp-success-soft)', color: 'var(--gp-success)' }}
+                  >
+                    <Check size={11} strokeWidth={2.5} />
+                  </span>
+                ) : (
+                  <span
+                    className="inline-block w-5 h-5 rounded-full border"
+                    style={{ borderColor: 'var(--gp-border-strong)' }}
+                  />
+                )}
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-[15.5px] font-medium leading-snug truncate group-hover:underline underline-offset-4" style={{ letterSpacing: '-0.005em' }}>
+                  {lesson.title}
+                </span>
+                <span className="block text-[13px] mt-0.5 truncate" style={{ color: 'var(--gp-ink-3)' }}>
+                  {lesson.description}
+                </span>
+              </span>
+              <ArrowUpRight
+                size={14}
+                style={{ color: 'var(--gp-ink-4)' }}
+                className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+              />
+            </Link>
+          </li>
+        ))}
+      </ol>
+    </motion.section>
+  );
+}
+
+/* ---------- Skeleton ---------- */
+function ChapterIndexSkeleton() {
+  return (
+    <div className="grid gap-12">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="grid md:grid-cols-12 gap-10">
+          <div className="md:col-span-4 space-y-3">
+            <div className="h-3 w-10 gp-skel" />
+            <div className="h-6 w-3/4 gp-skel" />
+            <div className="h-3 w-full gp-skel" />
+            <div className="h-3 w-2/3 gp-skel" />
+            <div className="h-1 w-full gp-skel mt-4" />
+          </div>
+          <div className="md:col-span-8 space-y-3">
+            {[0, 1, 2, 3, 4].map((j) => (
+              <div key={j} className="flex items-center gap-4 py-3">
+                <div className="h-3 w-6 gp-skel" />
+                <div className="h-5 w-5 rounded-full gp-skel" />
+                <div className="h-4 flex-1 gp-skel" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+

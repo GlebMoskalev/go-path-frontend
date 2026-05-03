@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router';
 import { LogOut, User, ChevronDown, Menu, X, Sun, Moon } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { Button } from '../design/Button';
+import { dur, ease } from '../design/motion';
+import { GopherAvatar } from './GopherAvatar';
 
 const navLinks = [
   { to: '/theory', label: 'Теория' },
@@ -18,402 +21,269 @@ export function Header() {
   const location = useLocation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    const onClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
   }, []);
 
   useEffect(() => {
     setMobileOpen(false);
+    setDropdownOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 4);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const isActive = (to: string) => location.pathname.startsWith(to);
 
   return (
     <header
-      className="sticky top-0 z-50"
+      className="sticky top-0 z-50 transition-[border-color,background-color] duration-200"
       style={{
-        background: 'var(--go-header-bg)',
-        borderBottom: '1px solid var(--go-border)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
+        background: 'var(--gp-header-bg)',
+        borderBottom: scrolled ? '1px solid var(--gp-border)' : '1px solid transparent',
+        backdropFilter: 'saturate(140%) blur(14px)',
+        WebkitBackdropFilter: 'saturate(140%) blur(14px)',
       }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-6">
-        {/* Logo */}
-        <Link to="/" className="flex-shrink-0 select-none" style={{ textDecoration: 'none' }}>
-          <span style={{
-            fontWeight: 800,
-            fontSize: '22px',
-            letterSpacing: '-0.04em',
-            color: 'var(--go-cyan)',
-          }}>
-            GO
-          </span>
-          <span style={{
-            fontWeight: 600,
-            fontSize: '22px',
-            letterSpacing: '-0.04em',
-            color: 'var(--go-text)',
-            marginLeft: '2px',
-          }}>
-            PATH
+      <div className="gp-container h-[60px] flex items-center justify-between gap-6 !px-5">
+        {/* Wordmark — typographic only, no gradient. The accent dot is the only color. */}
+        <Link to="/" className="flex items-center gap-2 select-none no-underline" aria-label="Go Path home">
+          <span
+            aria-hidden
+            className="inline-block w-1.5 h-1.5 rounded-full"
+            style={{ background: 'var(--gp-accent)' }}
+          />
+          <span
+            className="font-medium text-[15px] tracking-tight"
+            style={{ color: 'var(--gp-ink)' }}
+          >
+            Go Path
           </span>
         </Link>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-1">
-          {navLinks.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              style={{
-                position: 'relative',
-                color: isActive(link.to) ? 'var(--go-text)' : 'var(--go-muted)',
-                fontWeight: isActive(link.to) ? 600 : 500,
-                fontSize: '14px',
-                padding: '6px 14px',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                transition: 'color 0.2s, background-color 0.2s',
-                backgroundColor: isActive(link.to) ? 'var(--go-cyan-muted)' : 'transparent',
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive(link.to)) {
-                  e.currentTarget.style.color = 'var(--go-text)';
-                  e.currentTarget.style.backgroundColor = 'var(--go-surface)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive(link.to)) {
-                  e.currentTarget.style.color = 'var(--go-muted)';
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }
-              }}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+        <LayoutGroup id="nav">
+          <nav className="hidden md:flex items-center gap-0.5">
+            {navLinks.map((link) => {
+              const active = isActive(link.to);
+              return (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className="relative px-3 py-1.5 text-[13px] rounded-md transition-colors no-underline"
+                  style={{
+                    color: active ? 'var(--gp-ink)' : 'var(--gp-ink-3)',
+                    fontWeight: active ? 500 : 450,
+                  }}
+                  onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = 'var(--gp-ink)'; }}
+                  onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = 'var(--gp-ink-3)'; }}
+                >
+                  {link.label}
+                  {active && (
+                    <motion.span
+                      layoutId="nav-active"
+                      className="absolute left-2 right-2 -bottom-[14px] h-px"
+                      style={{ background: 'var(--gp-ink)' }}
+                      transition={{ duration: dur.slow, ease: ease.emphasized }}
+                    />
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+        </LayoutGroup>
 
-        {/* Right side */}
-        <div className="flex items-center gap-2">
+        {/* Right cluster */}
+        <div className="flex items-center gap-1.5">
           {/* Theme toggle */}
           <button
             onClick={toggle}
             aria-label="Toggle theme"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '36px',
-              height: '36px',
-              borderRadius: '10px',
-              background: 'transparent',
-              border: '1px solid transparent',
-              color: 'var(--go-muted)',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'var(--go-text)';
-              e.currentTarget.style.backgroundColor = 'var(--go-surface)';
-              e.currentTarget.style.borderColor = 'var(--go-border)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--go-muted)';
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.borderColor = 'transparent';
-            }}
+            className="w-9 h-9 inline-flex items-center justify-center rounded-md transition-colors"
+            style={{ color: 'var(--gp-ink-3)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--gp-surface-muted)'; e.currentTarget.style.color = 'var(--gp-ink)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--gp-ink-3)'; }}
           >
             <AnimatePresence mode="wait" initial={false}>
-              <motion.div
+              <motion.span
                 key={resolved}
-                initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
+                initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
                 animate={{ rotate: 0, opacity: 1, scale: 1 }}
-                exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
-                transition={{ duration: 0.2 }}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                exit={{ rotate: 90, opacity: 0, scale: 0.6 }}
+                transition={{ duration: dur.base, ease: ease.standard }}
+                className="inline-flex"
               >
-                {resolved === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-              </motion.div>
+                {resolved === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+              </motion.span>
             </AnimatePresence>
           </button>
 
           {isLoading ? (
-            <div style={{
-              width: '84px',
-              height: '32px',
-              borderRadius: '8px',
-              background: 'var(--go-surface)',
-              animation: 'pulse 1.5s ease-in-out infinite',
-            }} />
+            <div className="w-[88px] h-8 rounded-md gp-skel" />
           ) : user ? (
             <div ref={dropdownRef} className="relative">
               <button
-                onClick={() => setDropdownOpen(!dropdownOpen)}
+                onClick={() => setDropdownOpen((v) => !v)}
+                className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-md transition-colors"
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '4px 10px 4px 4px',
-                  borderRadius: '10px',
-                  background: dropdownOpen ? 'var(--go-surface)' : 'transparent',
-                  border: '1px solid',
-                  borderColor: dropdownOpen ? 'var(--go-border)' : 'transparent',
-                  cursor: 'pointer',
-                  color: 'var(--go-text)',
-                  transition: 'all 0.2s',
+                  background: dropdownOpen ? 'var(--gp-surface-muted)' : 'transparent',
+                  color: 'var(--gp-ink)',
                 }}
-                onMouseEnter={(e) => {
-                  if (!dropdownOpen) {
-                    e.currentTarget.style.background = 'var(--go-surface)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!dropdownOpen) {
-                    e.currentTarget.style.background = 'transparent';
-                  }
-                }}
+                onMouseEnter={(e) => { if (!dropdownOpen) e.currentTarget.style.background = 'var(--gp-surface-muted)'; }}
+                onMouseLeave={(e) => { if (!dropdownOpen) e.currentTarget.style.background = 'transparent'; }}
               >
-                <img
-                  src={user.picture}
-                  alt={user.name}
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    const next = e.currentTarget.nextElementSibling as HTMLElement | null;
-                    if (next) next.style.display = 'flex';
-                  }}
-                  style={{
-                    width: '28px',
-                    height: '28px',
-                    borderRadius: '50%',
-                    background: 'var(--go-surface)',
-                    border: '1px solid var(--go-border)',
-                  }}
-                />
-                <div style={{
-                  display: 'none',
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: '50%',
-                  background: 'var(--go-cyan-muted)',
-                  border: '1px solid var(--go-border)',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  color: 'var(--go-cyan)',
-                  flexShrink: 0,
-                }}>
-                  {user.name.charAt(0).toUpperCase()}
-                </div>
-                <span style={{
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  maxWidth: '110px',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}>
+                <GopherAvatar size={26} />
+                <span className="text-[13px] font-medium max-w-[110px] truncate hidden sm:block">
                   {user.name.split(' ')[0]}
                 </span>
-                <motion.div
-                  animate={{ rotate: dropdownOpen ? 180 : 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <ChevronDown size={14} style={{ color: 'var(--go-subtle)' }} />
-                </motion.div>
+                <motion.span animate={{ rotate: dropdownOpen ? 180 : 0 }} transition={{ duration: dur.fast }}>
+                  <ChevronDown size={13} style={{ color: 'var(--gp-ink-4)' }} />
+                </motion.span>
               </button>
 
               <AnimatePresence>
                 {dropdownOpen && (
                   <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                    transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
+                    initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                    transition={{ duration: dur.base, ease: ease.emphasized }}
+                    className="absolute right-0 mt-2 w-[228px] rounded-lg overflow-hidden"
                     style={{
-                      position: 'absolute',
-                      top: 'calc(100% + 8px)',
-                      right: 0,
-                      width: '200px',
-                      background: 'var(--go-surface)',
-                      border: '1px solid var(--go-border)',
-                      borderRadius: '12px',
-                      padding: '6px',
-                      boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                      background: 'var(--gp-surface)',
+                      border: '1px solid var(--gp-border)',
+                      boxShadow: 'var(--gp-shadow-lg)',
                     }}
                   >
-                    <div style={{
-                      padding: '8px 10px 10px',
-                      borderBottom: '1px solid var(--go-border)',
-                      marginBottom: '4px',
-                    }}>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--go-text)' }}>{user.name}</div>
-                      <div style={{ fontSize: '12px', color: 'var(--go-muted)', marginTop: '2px' }}>{user.email}</div>
+                    <div className="px-3 pt-3 pb-2.5 border-b" style={{ borderColor: 'var(--gp-border)' }}>
+                      <div className="text-[13px] font-medium" style={{ color: 'var(--gp-ink)' }}>{user.name}</div>
+                      <div className="text-[12px] mt-0.5 truncate" style={{ color: 'var(--gp-ink-3)' }}>{user.email}</div>
                     </div>
-                    <Link
-                      to="/profile"
-                      onClick={() => setDropdownOpen(false)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px 10px',
-                        borderRadius: '8px',
-                        color: 'var(--go-muted)',
-                        fontSize: '13px',
-                        fontWeight: 500,
-                        textDecoration: 'none',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--go-surface-2)';
-                        e.currentTarget.style.color = 'var(--go-text)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                        e.currentTarget.style.color = 'var(--go-muted)';
-                      }}
-                    >
-                      <User size={14} />
-                      Профиль
-                    </Link>
-                    <button
-                      onClick={() => { logout(); setDropdownOpen(false); }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px 10px',
-                        borderRadius: '8px',
-                        color: 'var(--go-muted)',
-                        fontSize: '13px',
-                        fontWeight: 500,
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        width: '100%',
-                        transition: 'all 0.15s',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--go-surface-2)';
-                        e.currentTarget.style.color = 'var(--go-red)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                        e.currentTarget.style.color = 'var(--go-muted)';
-                      }}
-                    >
-                      <LogOut size={14} />
-                      Выйти
-                    </button>
+                    <div className="p-1.5">
+                      <DropdownItem to="/profile" icon={<User size={14} />} onClick={() => setDropdownOpen(false)}>
+                        Профиль
+                      </DropdownItem>
+                      <DropdownItem onClick={() => { logout(); setDropdownOpen(false); }} icon={<LogOut size={14} />} danger>
+                        Выйти
+                      </DropdownItem>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
           ) : (
-            <button
+            <Button
+              size="sm"
+              variant="primary"
               onClick={login}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '7px 16px',
-                borderRadius: '10px',
-                background: 'var(--go-cyan)',
-                border: 'none',
-                color: '#fff',
-                fontSize: '13px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                letterSpacing: '0.01em',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'var(--go-cyan-hover)';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'var(--go-cyan)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
+              iconLeft={<GoogleMark />}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-              </svg>
               Войти
-            </button>
+            </Button>
           )}
 
-          {/* Mobile menu button */}
           <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--go-muted)',
-              cursor: 'pointer',
-              padding: '4px',
-            }}
+            onClick={() => setMobileOpen((v) => !v)}
+            className="md:hidden ml-1 inline-flex items-center justify-center w-9 h-9 rounded-md"
+            style={{ color: 'var(--gp-ink-3)' }}
+            aria-label={mobileOpen ? 'Закрыть меню' : 'Открыть меню'}
           >
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Nav */}
+      {/* Mobile nav */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            style={{
-              overflow: 'hidden',
-              background: 'var(--go-surface)',
-              borderTop: '1px solid var(--go-border)',
-            }}
+            transition={{ duration: dur.base, ease: ease.emphasized }}
+            className="md:hidden overflow-hidden border-t"
+            style={{ borderColor: 'var(--gp-border)', background: 'var(--gp-surface)' }}
           >
-            <div style={{ padding: '12px 16px' }}>
-              {navLinks.map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  style={{
-                    display: 'block',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    color: isActive(link.to) ? 'var(--go-cyan)' : 'var(--go-muted)',
-                    fontWeight: isActive(link.to) ? 600 : 500,
-                    fontSize: '15px',
-                    textDecoration: 'none',
-                    marginBottom: '2px',
-                    background: isActive(link.to) ? 'var(--go-cyan-muted)' : 'transparent',
-                  }}
-                >
-                  {link.label}
-                </Link>
-              ))}
+            <div className="p-3 grid gap-0.5">
+              {navLinks.map((link) => {
+                const active = isActive(link.to);
+                return (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    className="flex items-center justify-between px-3 py-2.5 rounded-md no-underline transition-colors"
+                    style={{
+                      color: active ? 'var(--gp-ink)' : 'var(--gp-ink-3)',
+                      background: active ? 'var(--gp-surface-muted)' : 'transparent',
+                      fontWeight: active ? 500 : 450,
+                      fontSize: '14px',
+                    }}
+                  >
+                    <span>{link.label}</span>
+                    {active && <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--gp-accent)' }} />}
+                  </Link>
+                );
+              })}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
     </header>
+  );
+}
+
+function DropdownItem({
+  to, onClick, icon, danger, children,
+}: {
+  to?: string; onClick?: () => void; icon?: React.ReactNode; danger?: boolean; children: React.ReactNode;
+}) {
+  const baseStyle: React.CSSProperties = {
+    color: danger ? 'var(--gp-danger)' : 'var(--gp-ink-2)',
+    fontSize: '13px',
+    fontWeight: 500,
+    background: 'transparent',
+  };
+  const cls = 'flex items-center gap-2 w-full px-2.5 py-2 rounded-md no-underline transition-colors';
+  const handleHoverEnter = (e: React.MouseEvent<HTMLElement>) => {
+    e.currentTarget.style.background = 'var(--gp-surface-muted)';
+    if (!danger) e.currentTarget.style.color = 'var(--gp-ink)';
+  };
+  const handleHoverLeave = (e: React.MouseEvent<HTMLElement>) => {
+    e.currentTarget.style.background = 'transparent';
+    e.currentTarget.style.color = danger ? 'var(--gp-danger)' : 'var(--gp-ink-2)';
+  };
+  if (to) {
+    return (
+      <Link to={to} className={cls} style={baseStyle} onClick={onClick} onMouseEnter={handleHoverEnter} onMouseLeave={handleHoverLeave}>
+        {icon}{children}
+      </Link>
+    );
+  }
+  return (
+    <button className={cls} style={{ ...baseStyle, border: 'none', cursor: 'pointer' }} onClick={onClick} onMouseEnter={handleHoverEnter} onMouseLeave={handleHoverLeave}>
+      {icon}{children}
+    </button>
+  );
+}
+
+function GoogleMark() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden>
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+    </svg>
   );
 }

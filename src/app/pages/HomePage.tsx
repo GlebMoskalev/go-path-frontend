@@ -1,237 +1,14 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { BookOpen, Code2, Brain, FolderGit2, ArrowRight, XCircle } from 'lucide-react';
+import { ArrowUpRight, ArrowRight, BookOpen, Code2, Brain, FolderGit2, XCircle, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { useEffect, useState } from 'react';
-import { AnimatedSection, StaggerContainer, StaggerItem } from '../components/AnimatedSection';
+import { fetchUserStats, type UserStats } from '../api';
+import { Button, Container, Eyebrow, ProgressRing, ProgressTrack, fadeUp, scaleIn, staggerParent, staggerChild } from '../design';
+import { dur, ease } from '../design/motion';
 import { CodeBlock } from '../components/CodeBlock';
 
-const features = [
-  { icon: <BookOpen size={22} />, title: 'Теория', description: 'Структурированные уроки по всем аспектам Go: от основ синтаксиса до продвинутой конкурентности.', to: '/theory', color: 'var(--go-cyan)' },
-  { icon: <Code2 size={22} />, title: 'Задачи', description: 'Практические задачи с проверкой в реальном времени. Встроенный редактор кода.', to: '/tasks', color: 'var(--go-green)' },
-  { icon: <Brain size={22} />, title: 'Квизы', description: 'Проверьте знания через вопросы с вариантами ответов и мгновенной обратной связью.', to: '/quiz', color: 'var(--go-amber)' },
-  { icon: <FolderGit2 size={22} />, title: 'Проекты', description: 'Пошаговое создание реальных Go-приложений: REST API, CLI-инструменты.', to: '/projects', color: '#c792ea' },
-];
-
-const stats = [
-  { value: '40+', label: 'уроков' },
-  { value: '60+', label: 'задач' },
-  { value: '4', label: 'проекта' },
-  { value: '100+', label: 'вопросов' },
-];
-
-export function HomePage() {
-  const { user, login } = useAuth();
-  const [authError, setAuthError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const error = params.get('error');
-    if (error) {
-      setAuthError(error);
-      window.history.replaceState({}, '', window.location.pathname);
-      setTimeout(() => setAuthError(null), 5000);
-    }
-  }, []);
-
-  return (
-    <div style={{ background: 'var(--go-bg)', minHeight: '100vh' }}>
-      {/* Auth error toast */}
-      <AnimatePresence>
-        {authError && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            style={{
-              position: 'fixed', top: '80px', left: '50%', transform: 'translateX(-50%)',
-              zIndex: 1000, maxWidth: '500px', width: '90%',
-            }}
-          >
-            <div style={{
-              background: 'var(--go-surface)', border: '1px solid var(--go-red)',
-              borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center',
-              gap: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
-            }}>
-              <XCircle size={20} style={{ color: 'var(--go-red)', flexShrink: 0 }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--go-text)', marginBottom: '2px' }}>Ошибка авторизации</div>
-                <div style={{ fontSize: '13px', color: 'var(--go-muted)' }}>{authError}</div>
-              </div>
-              <button onClick={() => setAuthError(null)} style={{ background: 'none', border: 'none', color: 'var(--go-muted)', cursor: 'pointer', padding: '4px' }}>
-                <XCircle size={16} />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Hero */}
-      <section style={{ paddingTop: '100px', paddingBottom: '100px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-        <div style={{
-          position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -60%)',
-          width: '700px', height: '500px',
-          background: 'radial-gradient(ellipse, var(--go-cyan-muted) 0%, transparent 70%)',
-          pointerEvents: 'none', opacity: 0.6,
-        }} />
-
-        <div style={{ maxWidth: '860px', margin: '0 auto', padding: '0 24px', position: 'relative' }}>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
-          >
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: '6px',
-              padding: '5px 14px', borderRadius: '20px', border: '1px solid var(--go-border)',
-              background: 'var(--go-surface)', fontSize: '12px', color: 'var(--go-muted)',
-              marginBottom: '32px', letterSpacing: '0.05em', textTransform: 'uppercase',
-            }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--go-green)', display: 'inline-block' }} />
-              Интерактивная платформа обучения
-            </div>
-          </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
-            style={{
-              fontSize: 'clamp(40px, 6vw, 72px)', fontWeight: 800, letterSpacing: '-0.04em',
-              lineHeight: '1.05', color: 'var(--go-text)', marginBottom: '24px',
-            }}
-          >
-            Изучай{' '}
-            <span style={{
-              background: 'linear-gradient(135deg, var(--go-cyan), #00E5FF)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}>Go</span>
-            {' '}на практике
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-            style={{
-              fontSize: '19px', color: 'var(--go-muted)', lineHeight: '1.65',
-              maxWidth: '560px', margin: '0 auto 40px', fontWeight: 400,
-            }}
-          >
-            Теория, задачи, квизы и проекты — всё для освоения Go с нуля до уровня уверенного разработчика
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}
-          >
-            {user ? (
-              <Link to="/theory" style={{
-                display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '13px 28px',
-                borderRadius: '12px', background: 'var(--go-cyan)', color: '#fff', fontWeight: 700,
-                fontSize: '15px', textDecoration: 'none', transition: 'all 0.2s',
-              }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,173,216,0.25)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
-              >
-                Продолжить обучение <ArrowRight size={16} />
-              </Link>
-            ) : (
-              <button onClick={login} style={{
-                display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '13px 28px',
-                borderRadius: '12px', background: 'var(--go-cyan)', border: 'none', color: '#fff',
-                fontWeight: 700, fontSize: '15px', cursor: 'pointer', transition: 'all 0.2s',
-              }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,173,216,0.25)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
-              >
-                Начать бесплатно <ArrowRight size={16} />
-              </button>
-            )}
-            <Link to="/theory" style={{
-              display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '13px 28px',
-              borderRadius: '12px', background: 'transparent', border: '1px solid var(--go-border-2)',
-              color: 'var(--go-muted)', fontWeight: 600, fontSize: '15px', textDecoration: 'none', transition: 'all 0.2s',
-            }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--go-cyan)'; e.currentTarget.style.color = 'var(--go-text)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--go-border-2)'; e.currentTarget.style.color = 'var(--go-muted)'; }}
-            >
-              Посмотреть теорию
-            </Link>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Stats */}
-      <AnimatedSection>
-        <section style={{ borderTop: '1px solid var(--go-border)', borderBottom: '1px solid var(--go-border)', background: 'var(--go-surface)' }}>
-          <div style={{ maxWidth: '960px', margin: '0 auto', padding: '24px', display: 'flex', justifyContent: 'center', flexWrap: 'wrap' }}>
-            {stats.map((stat, i) => (
-              <div key={i} style={{
-                flex: '1 1 120px', textAlign: 'center', padding: '16px 24px',
-                borderRight: i < stats.length - 1 ? '1px solid var(--go-border)' : 'none',
-              }}>
-                <div style={{ fontSize: '32px', fontWeight: 800, color: 'var(--go-cyan)', letterSpacing: '-0.03em', lineHeight: 1 }}>{stat.value}</div>
-                <div style={{ fontSize: '13px', color: 'var(--go-muted)', marginTop: '4px', fontWeight: 500 }}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-      </AnimatedSection>
-
-      {/* Features */}
-      <section style={{ padding: '80px 24px' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <AnimatedSection style={{ textAlign: 'center', marginBottom: '56px' }}>
-            <h2 style={{ fontSize: '32px', fontWeight: 800, color: 'var(--go-text)', letterSpacing: '-0.03em', marginBottom: '12px' }}>
-              Всё необходимое для изучения Go
-            </h2>
-            <p style={{ fontSize: '16px', color: 'var(--go-muted)' }}>Четыре формата обучения, которые дополняют друг друга</p>
-          </AnimatedSection>
-
-          <StaggerContainer style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
-            {features.map((f) => (
-              <StaggerItem key={f.to}>
-                <Link to={f.to} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
-                  <div style={{
-                    background: 'var(--go-surface)', border: '1px solid var(--go-border)',
-                    borderRadius: '14px', padding: '28px', height: '100%', cursor: 'pointer',
-                    transition: 'border-color 0.2s, transform 0.2s, box-shadow 0.2s',
-                  }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = f.color; e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.08)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--go-border)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
-                  >
-                    <div style={{
-                      width: '44px', height: '44px', borderRadius: '12px',
-                      background: 'var(--go-surface-2)', display: 'flex', alignItems: 'center',
-                      justifyContent: 'center', color: f.color, marginBottom: '18px',
-                    }}>
-                      {f.icon}
-                    </div>
-                    <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--go-text)', marginBottom: '10px', letterSpacing: '-0.01em' }}>{f.title}</h3>
-                    <p style={{ fontSize: '14px', color: 'var(--go-muted)', lineHeight: '1.65', marginBottom: '20px' }}>{f.description}</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: f.color, fontSize: '13px', fontWeight: 600 }}>
-                      Открыть <ArrowRight size={14} />
-                    </div>
-                  </div>
-                </Link>
-              </StaggerItem>
-            ))}
-          </StaggerContainer>
-        </div>
-      </section>
-
-      {/* Code preview */}
-      <AnimatedSection variant="scaleIn" style={{ padding: '0 24px 80px' }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <CodeBlock
-            filename="goroutine_example.go"
-            language="go"
-            code={`package main
+const SAMPLE = `package main
 
 import (
     "fmt"
@@ -245,74 +22,451 @@ func processOrder(wg *sync.WaitGroup, id int) {
 
 func main() {
     var wg sync.WaitGroup
-
     for i := 1; i <= 5; i++ {
         wg.Add(1)
         go processOrder(&wg, i)
     }
-
     wg.Wait()
     fmt.Println("Все заказы обработаны")
-}`}
-          />
-        </div>
-      </AnimatedSection>
+}`;
 
-      {/* CTA */}
-      {!user && (
-        <AnimatedSection variant="scaleIn" style={{ padding: '0 24px 80px' }}>
-          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <div style={{
-              background: 'var(--go-surface)', border: '1px solid var(--go-border-2)',
-              borderRadius: '20px', padding: '48px', textAlign: 'center', position: 'relative', overflow: 'hidden',
-            }}>
-              <div style={{
-                position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
-                background: 'linear-gradient(90deg, transparent, var(--go-cyan), transparent)',
-              }} />
-              <h3 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--go-text)', letterSpacing: '-0.02em', marginBottom: '12px' }}>Готов начать?</h3>
-              <p style={{ fontSize: '15px', color: 'var(--go-muted)', marginBottom: '28px' }}>
-                Войди через Google и начни учить Go прямо сейчас — бесплатно
-              </p>
-              <button onClick={login} style={{
-                display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '13px 32px',
-                borderRadius: '12px', background: 'var(--go-cyan)', border: 'none', color: '#fff',
-                fontWeight: 700, fontSize: '15px', cursor: 'pointer', transition: 'all 0.2s',
+const PATH = [
+  { num: '01', to: '/theory',   title: 'Теория',   sub: 'Структурированные уроки с навигацией по главам.', icon: <BookOpen size={16} /> },
+  { num: '02', to: '/tasks',    title: 'Задачи',   sub: 'Практика в редакторе с автопроверкой и AI-разбором.', icon: <Code2 size={16} /> },
+  { num: '03', to: '/quiz',     title: 'Квизы',    sub: 'Короткие проверки знаний с мгновенной обратной связью.', icon: <Brain size={16} /> },
+  { num: '04', to: '/projects', title: 'Проекты',  sub: 'Многошаговые проекты — от REST API до CLI-инструментов.', icon: <FolderGit2 size={16} /> },
+];
+
+export function HomePage() {
+  const { user, login } = useAuth();
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
+    if (error) {
+      setAuthError(error);
+      window.history.replaceState({}, '', window.location.pathname);
+      const t = setTimeout(() => setAuthError(null), 5000);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
+  return (
+    <div className="relative" style={{ background: 'var(--gp-bg)' }}>
+      {/* Auth error toast */}
+      <AnimatePresence>
+        {authError && (
+          <motion.div
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            transition={{ duration: dur.base, ease: ease.emphasized }}
+            className="fixed top-[80px] left-1/2 -translate-x-1/2 z-[60] w-[min(92%,520px)]"
+          >
+            <div
+              className="flex items-start gap-3 px-4 py-3 rounded-lg"
+              style={{
+                background: 'var(--gp-surface)',
+                border: '1px solid var(--gp-danger)',
+                boxShadow: 'var(--gp-shadow-lg)',
               }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,173,216,0.25)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
-              >
-                Войти через Google
+            >
+              <XCircle size={18} style={{ color: 'var(--gp-danger)', marginTop: 2, flexShrink: 0 }} />
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-medium" style={{ color: 'var(--gp-ink)' }}>Ошибка авторизации</div>
+                <div className="text-[12px] mt-0.5" style={{ color: 'var(--gp-ink-3)' }}>{authError}</div>
+              </div>
+              <button onClick={() => setAuthError(null)} aria-label="Закрыть" className="opacity-60 hover:opacity-100">
+                <XCircle size={14} style={{ color: 'var(--gp-ink-3)' }} />
               </button>
             </div>
-          </div>
-        </AnimatedSection>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Footer */}
-      <footer style={{ borderTop: '1px solid var(--go-border)', padding: '32px 24px', textAlign: 'center' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
-            <span style={{ fontWeight: 800, fontSize: '20px', letterSpacing: '-0.04em' }}>
-              <span style={{ color: 'var(--go-cyan)' }}>GO</span>
-              <span style={{ color: 'var(--go-text)' }}>PATH</span>
+      {user ? <DashboardHero /> : <MarketingHero onLogin={login} />}
+
+      <PathIndex authed={!!user} />
+
+      <CodeShowcase />
+
+      {!user && <FinalCTA onLogin={login} />}
+
+      <FooterMark />
+    </div>
+  );
+}
+
+/* -------------------------------------------------- */
+/* Hero — unauthenticated · editorial / magazine vibe */
+/* -------------------------------------------------- */
+function MarketingHero({ onLogin }: { onLogin: () => void }) {
+  return (
+    <section className="pt-20 md:pt-28 pb-20 md:pb-28">
+      <Container>
+        <motion.div initial="hidden" animate="visible" variants={staggerParent(0.08)}>
+          <motion.div variants={staggerChild} className="flex items-center gap-3">
+            <Eyebrow>Vol. 01 · 2026</Eyebrow>
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px]" style={{ color: 'var(--gp-ink-4)' }}>
+              <span className="gp-path-line-h w-8" />
+              Интерактивная платформа
             </span>
-            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-              {[{ label: 'Теория', to: '/theory' }, { label: 'Задачи', to: '/tasks' }, { label: 'Квизы', to: '/quiz' }, { label: 'Проекты', to: '/projects' }].map((item) => (
-                <Link key={item.to} to={item.to} style={{ fontSize: '13px', color: 'var(--go-muted)', textDecoration: 'none', transition: 'color 0.15s' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--go-text)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--go-muted)')}
+          </motion.div>
+
+          <motion.h1
+            variants={staggerChild}
+            className="gp-display mt-6 max-w-[16ch]"
+            style={{ fontSize: 'clamp(40px, 7vw, 84px)' }}
+          >
+            Go,&nbsp;
+            <em>проложенный</em>
+            <br />
+            ясной&nbsp;тропой.
+          </motion.h1>
+
+          <motion.p
+            variants={staggerChild}
+            className="mt-7 max-w-[58ch] text-[17px] md:text-[18px]"
+            style={{ color: 'var(--gp-ink-2)', lineHeight: 1.55 }}
+          >
+            Обучение Go в одном месте — теория, задачи, квизы и проекты. Без шумной геймификации:
+            спокойная типографика, продуманные шаги, обратная связь, которой можно доверять.
+          </motion.p>
+
+          <motion.div variants={staggerChild} className="mt-10 flex flex-wrap items-center gap-3">
+            <Button size="lg" variant="primary" onClick={onLogin} iconRight={<ArrowRight size={15} />}>
+              Начать путь
+            </Button>
+            <Link to="/theory" className="no-underline">
+              <Button size="lg" variant="ghost" iconRight={<ArrowUpRight size={15} />}>
+                Открыть теорию
+              </Button>
+            </Link>
+            <span className="text-[12px] ml-1" style={{ color: 'var(--gp-ink-4)' }}>
+              Бесплатно · Google OAuth
+            </span>
+          </motion.div>
+        </motion.div>
+      </Container>
+
+      {/* Subtle hairline + dotted "path" — single-use motif */}
+      <Container className="mt-20">
+        <div className="flex items-center gap-4">
+          <span className="text-[11px] gp-mono" style={{ color: 'var(--gp-ink-4)' }}>
+            ↓ путь
+          </span>
+          <span className="flex-1 gp-path-line-h" />
+        </div>
+      </Container>
+    </section>
+  );
+}
+
+/* -------------------------------------------------- */
+/* Hero — authenticated · personal dashboard          */
+/* -------------------------------------------------- */
+function DashboardHero() {
+  const { user } = useAuth();
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchUserStats()
+      .then(setStats)
+      .catch(() => setStats(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const theoryRatio = stats ? safeRatio(stats.theory.completed_lessons, stats.theory.total_lessons) : 0;
+  const tasksRatio = stats ? safeRatio(stats.tasks.solved_tasks, stats.tasks.total_tasks) : 0;
+  const projectsRatio = stats ? safeRatio(stats.projects.solved_steps, stats.projects.total_steps) : 0;
+  const overall = (theoryRatio + tasksRatio + projectsRatio) / 3;
+
+  const firstName = user?.name?.split(' ')[0] ?? '';
+
+  return (
+    <section className="pt-14 md:pt-20 pb-12">
+      <Container>
+        <motion.div initial="hidden" animate="visible" variants={staggerParent(0.06)}>
+          <motion.div variants={staggerChild}>
+            <Eyebrow>Сегодня · продолжаем путь</Eyebrow>
+          </motion.div>
+
+          <motion.h1
+            variants={staggerChild}
+            className="gp-display mt-5"
+            style={{ fontSize: 'clamp(32px, 4.6vw, 56px)' }}
+          >
+            С возвращением,&nbsp;
+            <em>{firstName || 'друг'}</em>.
+          </motion.h1>
+
+          <motion.p variants={staggerChild} className="mt-4 max-w-[62ch] text-[16px]" style={{ color: 'var(--gp-ink-3)' }}>
+            Маленькие шаги — большой прогресс. Возьми сегодня по уроку из каждого раздела.
+          </motion.p>
+
+          <motion.div variants={staggerChild} className="mt-12 grid gap-4 md:grid-cols-12">
+            {/* Overall ring */}
+            <div className="md:col-span-4 gp-card p-6 flex items-center gap-5">
+              <ProgressRing value={overall} size={84} stroke={5} tone="ink">
+                <span className="text-[15px] font-medium gp-mono" style={{ color: 'var(--gp-ink)' }}>
+                  {Math.round(overall * 100)}%
+                </span>
+              </ProgressRing>
+              <div className="min-w-0">
+                <div className="text-[12px]" style={{ color: 'var(--gp-ink-3)' }}>Общий прогресс</div>
+                <div className="mt-1 text-[20px] font-medium" style={{ color: 'var(--gp-ink)', letterSpacing: '-0.01em' }}>
+                  {loading ? <span className="inline-block w-24 h-5 gp-skel" /> : describeOverall(overall)}
+                </div>
+                <div className="mt-1 text-[12px]" style={{ color: 'var(--gp-ink-4)' }}>
+                  По теории, задачам и проектам
+                </div>
+              </div>
+            </div>
+
+            {/* Per-track tracks */}
+            <div className="md:col-span-8 gp-card p-6 grid gap-5">
+              <TrackRow
+                to="/theory"
+                title="Теория"
+                value={theoryRatio}
+                done={stats?.theory.completed_lessons ?? 0}
+                total={stats?.theory.total_lessons ?? 0}
+                icon={<BookOpen size={14} />}
+                loading={loading}
+              />
+              <span className="gp-path-line-h" />
+              <TrackRow
+                to="/tasks"
+                title="Задачи"
+                value={tasksRatio}
+                done={stats?.tasks.solved_tasks ?? 0}
+                total={stats?.tasks.total_tasks ?? 0}
+                icon={<Code2 size={14} />}
+                loading={loading}
+              />
+              <span className="gp-path-line-h" />
+              <TrackRow
+                to="/projects"
+                title="Проекты"
+                value={projectsRatio}
+                done={stats?.projects.solved_steps ?? 0}
+                total={stats?.projects.total_steps ?? 0}
+                icon={<FolderGit2 size={14} />}
+                loading={loading}
+              />
+            </div>
+          </motion.div>
+        </motion.div>
+      </Container>
+    </section>
+  );
+}
+
+function TrackRow({
+  to, title, value, done, total, icon, loading,
+}: { to: string; title: string; value: number; done: number; total: number; icon: React.ReactNode; loading: boolean }) {
+  return (
+    <Link to={to} className="group flex items-center gap-5 no-underline">
+      <span
+        className="inline-flex items-center justify-center w-8 h-8 rounded-md flex-shrink-0"
+        style={{ background: 'var(--gp-surface-muted)', color: 'var(--gp-ink-2)' }}
+      >
+        {icon}
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[14px] font-medium transition-colors group-hover:underline underline-offset-4" style={{ color: 'var(--gp-ink)' }}>
+            {title}
+          </span>
+          <span className="text-[12px] gp-mono" style={{ color: 'var(--gp-ink-3)' }}>
+            {loading ? <span className="inline-block w-12 h-3 gp-skel" /> : `${done}/${total}`}
+          </span>
+        </div>
+        <ProgressTrack value={value} tone={value === 1 ? 'success' : 'ink'} />
+      </div>
+      <ArrowUpRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--gp-ink-3)' }} />
+    </Link>
+  );
+}
+
+function describeOverall(v: number) {
+  if (v === 0) return 'Только начинаем';
+  if (v < 0.25) return 'Уверенный старт';
+  if (v < 0.5) return 'Идём ровно';
+  if (v < 0.75) return 'Большая часть пути';
+  if (v < 1) return 'Финишная прямая';
+  return 'Путь пройден';
+}
+
+function safeRatio(a: number, b: number) {
+  if (!b) return 0;
+  return Math.max(0, Math.min(1, a / b));
+}
+
+/* -------------------------------------------------- */
+/* Path index — table-of-contents style               */
+/* -------------------------------------------------- */
+function PathIndex({ authed }: { authed: boolean }) {
+  return (
+    <section className="py-20 md:py-24" style={{ borderTop: '1px solid var(--gp-border)' }}>
+      <Container>
+        <div className="grid md:grid-cols-12 gap-10">
+          <div className="md:col-span-4">
+            <Eyebrow marker={false}>Содержание</Eyebrow>
+            <h2 className="gp-display mt-4" style={{ fontSize: 'clamp(28px, 3.6vw, 44px)' }}>
+              Четыре <em>опоры</em> курса.
+            </h2>
+            <p className="mt-4 text-[15px] max-w-[42ch]" style={{ color: 'var(--gp-ink-3)' }}>
+              {authed
+                ? 'Каждый раздел — самостоятельный, но они работают лучше вместе. Перемещайся свободно.'
+                : 'Каждый формат отвечает за свою сторону обучения и усиливает остальные.'}
+            </p>
+          </div>
+
+          <motion.ol
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            variants={staggerParent(0.07)}
+            className="md:col-span-8 list-none p-0 m-0 grid"
+            style={{ borderTop: '1px solid var(--gp-border)' }}
+          >
+            {PATH.map((p) => (
+              <motion.li key={p.to} variants={staggerChild} style={{ borderBottom: '1px solid var(--gp-border)' }}>
+                <Link
+                  to={p.to}
+                  className="group flex items-center gap-6 py-6 no-underline transition-colors"
+                  style={{ color: 'var(--gp-ink)' }}
                 >
-                  {item.label}
+                  <span
+                    className="text-[12px] gp-mono w-8"
+                    style={{ color: 'var(--gp-ink-4)' }}
+                  >
+                    {p.num}
+                  </span>
+                  <span className="flex items-center gap-3 min-w-0 flex-1">
+                    <span
+                      className="inline-flex w-8 h-8 items-center justify-center rounded-md flex-shrink-0"
+                      style={{ background: 'var(--gp-surface-muted)', color: 'var(--gp-ink-2)' }}
+                    >
+                      {p.icon}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[18px] font-medium" style={{ letterSpacing: '-0.01em' }}>
+                        {p.title}
+                      </span>
+                      <span className="block text-[13px] mt-0.5 truncate" style={{ color: 'var(--gp-ink-3)' }}>
+                        {p.sub}
+                      </span>
+                    </span>
+                  </span>
+                  <span
+                    className="hidden md:inline-flex items-center gap-2 text-[12px] transition-transform group-hover:-translate-x-1"
+                    style={{ color: 'var(--gp-ink-3)' }}
+                  >
+                    Открыть <ArrowUpRight size={13} />
+                  </span>
                 </Link>
-              ))}
+              </motion.li>
+            ))}
+          </motion.ol>
+        </div>
+      </Container>
+    </section>
+  );
+}
+
+/* -------------------------------------------------- */
+/* Code showcase — printed page feeling               */
+/* -------------------------------------------------- */
+function CodeShowcase() {
+  return (
+    <section className="py-16 md:py-24" style={{ borderTop: '1px solid var(--gp-border)' }}>
+      <Container>
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.3 }}
+          variants={fadeUp}
+          className="grid md:grid-cols-12 gap-10 items-start"
+        >
+          <div className="md:col-span-5">
+            <Eyebrow>Пример</Eyebrow>
+            <h2 className="gp-display mt-4" style={{ fontSize: 'clamp(26px, 3.4vw, 40px)' }}>
+              Конкурентность <em>с первых строк</em>.
+            </h2>
+            <p className="mt-4 text-[15px] max-w-[42ch]" style={{ color: 'var(--gp-ink-3)' }}>
+              Каждый урок сопровождается работающим кодом, который ты запускаешь и меняешь сам — без копирования из учебника.
+            </p>
+            <div className="mt-6 flex items-center gap-2 text-[12px]" style={{ color: 'var(--gp-ink-4)' }}>
+              <Sparkles size={13} /> Подсветка, объяснение, AI-разбор кода
             </div>
           </div>
-          <div style={{ fontSize: '13px', color: 'var(--go-subtle)' }}>
-            © 2026 Go Path — Интерактивная платформа изучения Go
+          <motion.div variants={scaleIn} className="md:col-span-7">
+            <CodeBlock filename="goroutine_example.go" language="go" code={SAMPLE} />
+          </motion.div>
+        </motion.div>
+      </Container>
+    </section>
+  );
+}
+
+/* -------------------------------------------------- */
+/* Final CTA — quiet, single button                   */
+/* -------------------------------------------------- */
+function FinalCTA({ onLogin }: { onLogin: () => void }) {
+  return (
+    <section className="py-24 md:py-32" style={{ borderTop: '1px solid var(--gp-border)' }}>
+      <Container>
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.4 }}
+          variants={fadeUp}
+          className="max-w-[720px]"
+        >
+          <Eyebrow>Готов?</Eyebrow>
+          <h2 className="gp-display mt-4" style={{ fontSize: 'clamp(32px, 4.4vw, 56px)' }}>
+            Один <em>клик</em> до первого урока.
+          </h2>
+          <p className="mt-4 text-[15px] max-w-[48ch]" style={{ color: 'var(--gp-ink-3)' }}>
+            Войди через Google — и продолжишь ровно с того места, где остановишься. Никакой регистрации, никаких форм.
+          </p>
+          <div className="mt-8">
+            <Button size="lg" variant="primary" onClick={onLogin} iconRight={<ArrowRight size={15} />}>
+              Войти и начать
+            </Button>
           </div>
+        </motion.div>
+      </Container>
+    </section>
+  );
+}
+
+/* -------------------------------------------------- */
+/* Footer — minimal mark                              */
+/* -------------------------------------------------- */
+function FooterMark() {
+  return (
+    <footer style={{ borderTop: '1px solid var(--gp-border)' }} className="py-10">
+      <Container className="flex flex-wrap items-center justify-between gap-6">
+        <div className="flex items-center gap-2">
+          <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: 'var(--gp-accent)' }} />
+          <span className="text-[13px] font-medium" style={{ color: 'var(--gp-ink-2)' }}>Go Path</span>
+          <span className="text-[12px] ml-2" style={{ color: 'var(--gp-ink-4)' }}>
+            © 2026 · Интерактивная платформа изучения Go
+          </span>
         </div>
-      </footer>
-    </div>
+        <nav className="flex items-center gap-6">
+          {PATH.map((p) => (
+            <Link key={p.to} to={p.to} className="text-[13px] no-underline transition-colors hover:underline underline-offset-4" style={{ color: 'var(--gp-ink-3)' }}>
+              {p.title}
+            </Link>
+          ))}
+        </nav>
+      </Container>
+    </footer>
   );
 }

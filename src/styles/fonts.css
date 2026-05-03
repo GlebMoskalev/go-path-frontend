@@ -1,1 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+/* Editorial sans + display serif + monospace.
+   Inter for UI clarity, Instrument Serif for editorial voice in marketing/lessons,
+   JetBrains Mono for code. Manrope kept as fallback for any straggler usage. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Manrope:wght@400;500;600;700;800&display=swap');

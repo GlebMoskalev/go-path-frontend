@@ -3,9 +3,11 @@ import { Header } from './Header';
 
 export function Layout() {
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--go-bg)' }}>
+    <div className="min-h-screen relative" style={{ background: 'var(--gp-bg)', color: 'var(--gp-ink)' }}>
       <Header />
-      <Outlet />
+      <main className="relative">
+        <Outlet />
+      </main>
     </div>
   );
 }

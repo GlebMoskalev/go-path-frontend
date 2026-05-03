@@ -1,81 +1,275 @@
 @custom-variant dark (&:is(.dark *));
 
+/* =========================================================
+   Go Path · Design Tokens (v2 "Path")
+   Single source of truth. Both shadcn aliases and product
+   tokens live here. Use --gp-* for product, --color-* via
+   shadcn aliases for primitives.
+   ========================================================= */
+
 :root {
-  --font-size: 16px;
-  --background: #ffffff;
-  --foreground: #111827;
-  --card: #F7F8FB;
-  --card-foreground: #111827;
-  --popover: #ffffff;
-  --popover-foreground: #111827;
-  --primary: #111827;
-  --primary-foreground: #ffffff;
-  --secondary: #F1F3F8;
-  --secondary-foreground: #111827;
-  --muted: #EEF0F6;
-  --muted-foreground: #6B7280;
-  --accent: #E0E3EB;
-  --accent-foreground: #111827;
-  --destructive: #DC2626;
-  --destructive-foreground: #ffffff;
-  --border: #E0E3EB;
+  /* ---- Base type ---- */
+  --gp-font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --gp-font-serif: 'Instrument Serif', 'New York', Georgia, serif;
+  --gp-font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, Menlo, monospace;
+
+  --font-size: 15px;
+  --gp-text-xs: 0.75rem;       /* 12 */
+  --gp-text-sm: 0.8125rem;     /* 13 */
+  --gp-text-base: 0.9375rem;   /* 15 */
+  --gp-text-md: 1rem;          /* 16 */
+  --gp-text-lg: 1.125rem;      /* 18 */
+  --gp-text-xl: 1.375rem;      /* 22 */
+  --gp-text-2xl: 1.75rem;      /* 28 */
+  --gp-text-3xl: 2.25rem;      /* 36 */
+  --gp-text-4xl: 3rem;         /* 48 */
+  --gp-text-5xl: 4rem;         /* 64 */
+
+  --gp-tracking-tight: -0.02em;
+  --gp-tracking-tighter: -0.035em;
+  --gp-tracking-display: -0.045em;
+  --gp-tracking-wide: 0.06em;
+
+  /* ---- Spacing rhythm ---- */
+  --gp-space-1: 4px;
+  --gp-space-2: 8px;
+  --gp-space-3: 12px;
+  --gp-space-4: 16px;
+  --gp-space-5: 20px;
+  --gp-space-6: 24px;
+  --gp-space-8: 32px;
+  --gp-space-10: 40px;
+  --gp-space-12: 48px;
+  --gp-space-16: 64px;
+  --gp-space-20: 80px;
+  --gp-space-24: 96px;
+  --gp-space-32: 128px;
+
+  /* ---- Radii ---- */
+  --gp-radius-xs: 4px;
+  --gp-radius-sm: 6px;
+  --gp-radius-md: 10px;
+  --gp-radius-lg: 14px;
+  --gp-radius-xl: 20px;
+  --gp-radius-2xl: 28px;
+  --gp-radius-full: 9999px;
+
+  /* ---- Motion ---- */
+  --gp-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --gp-ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);   /* out-expo for entrances */
+  --gp-ease-emphasized-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --gp-dur-fast: 140ms;
+  --gp-dur-base: 220ms;
+  --gp-dur-slow: 360ms;
+  --gp-dur-page: 480ms;
+
+  /* ---- Light theme · paper & ink ---- */
+  --gp-bg: #FAFAF7;            /* warm off-white, paper */
+  --gp-bg-tint: #F4F3EE;       /* slightly tinted block */
+  --gp-surface: #FFFFFF;       /* raised card, brighter than bg for paper effect */
+  --gp-surface-muted: #F1F0EA; /* recessed surface */
+  --gp-surface-strong: #E9E7DF;/* divider-strong / chip bg */
+
+  --gp-border: #E6E3D9;        /* hairline */
+  --gp-border-strong: #D4D0C2; /* visible border */
+  --gp-border-focus: #1F2937;
+
+  --gp-ink: #15151A;           /* near-black, slight cool */
+  --gp-ink-2: #2A2A33;         /* secondary text */
+  --gp-ink-3: #5C5C66;         /* tertiary, captions */
+  --gp-ink-4: #8B8B93;         /* placeholder / subtle */
+  --gp-ink-5: #B6B6BA;         /* very subtle */
+
+  /* Single restrained accent — refined, not neon.
+     A deeper teal-leaning blue inspired by Go but with more depth. */
+  --gp-accent: #1B6F8A;
+  --gp-accent-hover: #155A72;
+  --gp-accent-soft: rgba(27, 111, 138, 0.10);
+  --gp-accent-ring: rgba(27, 111, 138, 0.32);
+  --gp-accent-ink: #FFFFFF;     /* foreground when accent is bg */
+
+  /* Semantic — muted, magazine-like */
+  --gp-success: #2F7D5B;
+  --gp-success-soft: rgba(47, 125, 91, 0.10);
+  --gp-warning: #B7791F;
+  --gp-warning-soft: rgba(183, 121, 31, 0.10);
+  --gp-danger: #B43A3A;
+  --gp-danger-soft: rgba(180, 58, 58, 0.10);
+  --gp-info: #1B6F8A;
+  --gp-info-soft: rgba(27, 111, 138, 0.10);
+
+  /* Editorial: a single warm copper as a *secondary* highlight,
+     used very sparingly (e.g. quote marks, milestone markers). */
+  --gp-highlight: #B05A26;
+  --gp-highlight-soft: rgba(176, 90, 38, 0.10);
+
+  /* Header glass */
+  --gp-header-bg: rgba(250, 250, 247, 0.78);
+
+  /* Code surfaces */
+  --gp-code-bg: #FBFAF5;
+  --gp-code-header: #F2F1EB;
+  --gp-code-border: #E6E3D9;
+  --gp-code-text: #1F2933;
+  --gp-code-muted: #7C7C85;
+  --gp-code-line: #BDBBB1;
+
+  /* Elevation — very soft, paper-like */
+  --gp-shadow-xs: 0 1px 0 rgba(20, 20, 26, 0.04);
+  --gp-shadow-sm: 0 1px 2px rgba(20, 20, 26, 0.05), 0 0 0 1px rgba(20, 20, 26, 0.03);
+  --gp-shadow-md: 0 4px 14px -4px rgba(20, 20, 26, 0.08), 0 1px 2px rgba(20, 20, 26, 0.04);
+  --gp-shadow-lg: 0 18px 40px -12px rgba(20, 20, 26, 0.18), 0 4px 12px -4px rgba(20, 20, 26, 0.06);
+  --gp-shadow-glow: 0 0 0 4px var(--gp-accent-ring);
+  --gp-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  /* ---- Bridge to shadcn (kept for existing primitives) ---- */
+  --background: var(--gp-bg);
+  --foreground: var(--gp-ink);
+  --card: var(--gp-surface);
+  --card-foreground: var(--gp-ink);
+  --popover: var(--gp-surface);
+  --popover-foreground: var(--gp-ink);
+  --primary: var(--gp-ink);
+  --primary-foreground: var(--gp-bg);
+  --secondary: var(--gp-surface-muted);
+  --secondary-foreground: var(--gp-ink);
+  --muted: var(--gp-surface-muted);
+  --muted-foreground: var(--gp-ink-3);
+  --accent: var(--gp-surface-strong);
+  --accent-foreground: var(--gp-ink);
+  --destructive: var(--gp-danger);
+  --destructive-foreground: #fff;
+  --border: var(--gp-border);
   --input: transparent;
-  --input-background: #F1F3F8;
-  --switch-background: #CDD1DC;
+  --input-background: var(--gp-surface);
+  --switch-background: var(--gp-border-strong);
+  --ring: var(--gp-border-focus);
+  --radius: 10px;
+
+  --sidebar: var(--gp-surface);
+  --sidebar-foreground: var(--gp-ink);
+  --sidebar-primary: var(--gp-ink);
+  --sidebar-primary-foreground: var(--gp-bg);
+  --sidebar-accent: var(--gp-surface-muted);
+  --sidebar-accent-foreground: var(--gp-ink);
+  --sidebar-border: var(--gp-border);
+  --sidebar-ring: var(--gp-border-focus);
+
+  --chart-1: var(--gp-accent);
+  --chart-2: var(--gp-success);
+  --chart-3: var(--gp-warning);
+  --chart-4: var(--gp-highlight);
+  --chart-5: var(--gp-ink-3);
+
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #9CA3AF;
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --sidebar: #F7F8FB;
-  --sidebar-foreground: #111827;
-  --sidebar-primary: #111827;
-  --sidebar-primary-foreground: #F7F8FB;
-  --sidebar-accent: #EEF0F6;
-  --sidebar-accent-foreground: #374151;
-  --sidebar-border: #E0E3EB;
-  --sidebar-ring: #9CA3AF;
+
+  /* Legacy --go-* aliases so existing pages keep rendering until refactored. */
+  --go-bg: var(--gp-bg);
+  --go-surface: var(--gp-surface);
+  --go-surface-2: var(--gp-surface-muted);
+  --go-border: var(--gp-border);
+  --go-border-2: var(--gp-border-strong);
+  --go-cyan: var(--gp-accent);
+  --go-cyan-hover: var(--gp-accent-hover);
+  --go-cyan-muted: var(--gp-accent-soft);
+  --go-amber: var(--gp-warning);
+  --go-green: var(--gp-success);
+  --go-green-muted: var(--gp-success-soft);
+  --go-red: var(--gp-danger);
+  --go-text: var(--gp-ink);
+  --go-text-secondary: var(--gp-ink-2);
+  --go-muted: var(--gp-ink-3);
+  --go-subtle: var(--gp-ink-4);
+  --go-header-bg: var(--gp-header-bg);
+  --go-code-bg: var(--gp-code-bg);
+  --go-code-header: var(--gp-code-header);
+  --go-code-border: var(--gp-code-border);
+  --go-code-text: var(--gp-code-text);
+  --go-code-muted: var(--gp-code-muted);
+  --go-code-line-num: var(--gp-code-line);
 }
 
+/* ============== Dark · ink mode ============== */
 .dark {
-  --background: #0B0D14;
-  --foreground: #F1F5F9;
-  --card: #12141E;
-  --card-foreground: #F1F5F9;
-  --popover: #12141E;
-  --popover-foreground: #F1F5F9;
-  --primary: #F1F5F9;
-  --primary-foreground: #0B0D14;
-  --secondary: #181B28;
-  --secondary-foreground: #F1F5F9;
-  --muted: #181B28;
-  --muted-foreground: #94A3B8;
-  --accent: #1E2236;
-  --accent-foreground: #F1F5F9;
-  --destructive: #EF4444;
-  --destructive-foreground: #F1F5F9;
-  --border: #1E2236;
-  --input: #1E2236;
-  --ring: #64748B;
-  --font-weight-medium: 500;
-  --font-weight-normal: 400;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: #12141E;
-  --sidebar-foreground: #F1F5F9;
-  --sidebar-primary: #00ADD8;
-  --sidebar-primary-foreground: #F1F5F9;
-  --sidebar-accent: #1E2236;
-  --sidebar-accent-foreground: #F1F5F9;
-  --sidebar-border: #1E2236;
-  --sidebar-ring: #64748B;
+  --gp-bg: #0E0E12;            /* deep ink */
+  --gp-bg-tint: #121218;
+  --gp-surface: #16161D;
+  --gp-surface-muted: #1B1B24;
+  --gp-surface-strong: #23232E;
+
+  --gp-border: #23232E;
+  --gp-border-strong: #2E2E3B;
+  --gp-border-focus: #E5E5EA;
+
+  --gp-ink: #ECECEF;
+  --gp-ink-2: #C8C8CE;
+  --gp-ink-3: #8E8E97;
+  --gp-ink-4: #6A6A73;
+  --gp-ink-5: #44444C;
+
+  --gp-accent: #4FB3CE;
+  --gp-accent-hover: #75C5DC;
+  --gp-accent-soft: rgba(79, 179, 206, 0.12);
+  --gp-accent-ring: rgba(79, 179, 206, 0.32);
+  --gp-accent-ink: #0E0E12;
+
+  --gp-success: #5BB58A;
+  --gp-success-soft: rgba(91, 181, 138, 0.12);
+  --gp-warning: #E0A350;
+  --gp-warning-soft: rgba(224, 163, 80, 0.12);
+  --gp-danger: #E26E6E;
+  --gp-danger-soft: rgba(226, 110, 110, 0.12);
+  --gp-info: #4FB3CE;
+  --gp-info-soft: rgba(79, 179, 206, 0.12);
+
+  --gp-highlight: #D69060;
+  --gp-highlight-soft: rgba(214, 144, 96, 0.12);
+
+  --gp-header-bg: rgba(14, 14, 18, 0.72);
+
+  --gp-code-bg: #0B0B10;
+  --gp-code-header: #14141B;
+  --gp-code-border: #23232E;
+  --gp-code-text: #E1E1E6;
+  --gp-code-muted: #7E7E88;
+  --gp-code-line: #2E2E3B;
+
+  --gp-shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.5);
+  --gp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  --gp-shadow-md: 0 4px 14px -4px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --gp-shadow-lg: 0 24px 50px -16px rgba(0, 0, 0, 0.7), 0 6px 14px -4px rgba(0, 0, 0, 0.5);
+  --gp-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+  --primary-foreground: var(--gp-bg);
+  --background: var(--gp-bg);
+  --foreground: var(--gp-ink);
+  --card: var(--gp-surface);
+  --card-foreground: var(--gp-ink);
+  --popover: var(--gp-surface);
+  --popover-foreground: var(--gp-ink);
+  --primary: var(--gp-ink);
+  --secondary: var(--gp-surface-muted);
+  --secondary-foreground: var(--gp-ink);
+  --muted: var(--gp-surface-muted);
+  --muted-foreground: var(--gp-ink-3);
+  --accent: var(--gp-surface-strong);
+  --accent-foreground: var(--gp-ink);
+  --destructive: var(--gp-danger);
+  --destructive-foreground: #fff;
+  --border: var(--gp-border);
+  --input: var(--gp-surface-muted);
+  --input-background: var(--gp-surface);
+  --switch-background: var(--gp-border-strong);
+  --ring: var(--gp-border-focus);
+  --sidebar: var(--gp-surface);
+  --sidebar-foreground: var(--gp-ink);
+  --sidebar-primary: var(--gp-ink);
+  --sidebar-primary-foreground: var(--gp-bg);
+  --sidebar-accent: var(--gp-surface-muted);
+  --sidebar-accent-foreground: var(--gp-ink);
+  --sidebar-border: var(--gp-border);
+  --sidebar-ring: var(--gp-border-focus);
 }
 
 @theme inline {
@@ -117,26 +311,54 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Path tokens, exposed as Tailwind utilities */
+  --color-gp-bg: var(--gp-bg);
+  --color-gp-surface: var(--gp-surface);
+  --color-gp-surface-muted: var(--gp-surface-muted);
+  --color-gp-surface-strong: var(--gp-surface-strong);
+  --color-gp-border: var(--gp-border);
+  --color-gp-border-strong: var(--gp-border-strong);
+  --color-gp-ink: var(--gp-ink);
+  --color-gp-ink-2: var(--gp-ink-2);
+  --color-gp-ink-3: var(--gp-ink-3);
+  --color-gp-ink-4: var(--gp-ink-4);
+  --color-gp-accent: var(--gp-accent);
+  --color-gp-accent-soft: var(--gp-accent-soft);
+  --color-gp-success: var(--gp-success);
+  --color-gp-warning: var(--gp-warning);
+  --color-gp-danger: var(--gp-danger);
+  --color-gp-highlight: var(--gp-highlight);
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
+  * { @apply border-border outline-ring/50; }
+
+  html { font-size: var(--font-size); }
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--gp-font-sans);
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
-  html {
-    font-size: var(--font-size);
-  }
+  /* Editorial defaults — sane, not dictatorial. Pages can override. */
+  h1, h2, h3, h4 { color: var(--gp-ink); letter-spacing: var(--gp-tracking-tight); }
+  h1 { font-size: var(--gp-text-3xl); font-weight: 600; line-height: 1.1; }
+  h2 { font-size: var(--gp-text-2xl); font-weight: 600; line-height: 1.2; }
+  h3 { font-size: var(--gp-text-xl); font-weight: 600; line-height: 1.3; }
+  h4 { font-size: var(--gp-text-lg); font-weight: 600; line-height: 1.4; }
+  p  { color: var(--gp-ink-2); line-height: 1.6; }
 
-  h1 { font-size: var(--text-2xl); font-weight: var(--font-weight-medium); line-height: 1.5; }
-  h2 { font-size: var(--text-xl); font-weight: var(--font-weight-medium); line-height: 1.5; }
-  h3 { font-size: var(--text-lg); font-weight: var(--font-weight-medium); line-height: 1.5; }
-  h4 { font-size: var(--text-base); font-weight: var(--font-weight-medium); line-height: 1.5; }
-  label { font-size: var(--text-base); font-weight: var(--font-weight-medium); line-height: 1.5; }
-  button { font-size: var(--text-base); font-weight: var(--font-weight-medium); line-height: 1.5; }
-  input { font-size: var(--text-base); font-weight: var(--font-weight-normal); line-height: 1.5; }
+  ::selection { background: var(--gp-accent-soft); color: var(--gp-ink); }
+
+  /* Focus ring — single consistent treatment */
+  :where(button, a, [role="button"], [role="link"], input, select, textarea):focus-visible {
+    outline: none;
+    box-shadow: var(--gp-shadow-glow);
+    border-radius: var(--gp-radius-sm);
+  }
 }
