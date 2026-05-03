@@ -163,6 +163,8 @@ export function QuizPage() {
         score={score}
         total={questions.length}
         history={history}
+        questions={questions}
+        chapters={chapters}
         onRetry={() => startQuiz()}
         onSetup={() => { setPhase('setup'); setQuestions([]); setHistory([]); }}
       />
@@ -564,9 +566,27 @@ function QuizPhase({
 /* =================== RESULT =================== */
 
 function ResultPhase({
-  score, total, history, onRetry, onSetup,
-}: { score: number; total: number; history: AnswerRecord[]; onRetry: () => void; onSetup: () => void }) {
+  score, total, history, questions, chapters, onRetry, onSetup,
+}: {
+  score: number;
+  total: number;
+  history: AnswerRecord[];
+  questions: QuizQuestion[];
+  chapters: QuizChapterInfo[];
+  onRetry: () => void;
+  onSetup: () => void;
+}) {
   const ratio = total > 0 ? score / total : 0;
+  const [hoveredDot, setHoveredDot] = useState<number | null>(null);
+
+  const questionChapterMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    questions.forEach((q) => {
+      const chapter = chapters.find((c) => c.slug === q.chapter_slug);
+      map[q.id] = chapter?.title ?? q.chapter_slug;
+    });
+    return map;
+  }, [questions, chapters]);
   const verdict =
     ratio >= 0.85 ? 'Отлично' :
     ratio >= 0.6 ? 'Хорошо' :
@@ -575,67 +595,107 @@ function ResultPhase({
 
   return (
     <div className="min-h-[calc(100vh-60px)]" style={{ background: 'var(--gp-bg)' }}>
-      <Container className="pt-20 pb-24 max-w-[720px]">
-        <motion.div initial="hidden" animate="visible" variants={staggerParent(0.06)}>
+      <Container className="pt-20 pb-24 max-w-[560px]">
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={staggerParent(0.06)}
+          className="flex flex-col items-center text-center"
+        >
+          {/* Eyebrow */}
           <motion.div variants={staggerChild}>
             <Eyebrow>Квиз завершён</Eyebrow>
           </motion.div>
-          <motion.h1 variants={staggerChild} className="gp-display mt-4" style={{ fontSize: 'clamp(40px, 5.4vw, 64px)' }}>
-            <em>{verdict}.</em>
-          </motion.h1>
 
-          <motion.div
-            variants={scaleIn}
-            initial="hidden"
-            animate="visible"
-            className="mt-12 flex items-center gap-8 flex-wrap"
-          >
+          {/* Progress ring */}
+          <motion.div variants={scaleIn} className="mt-10">
             <ProgressRing
               value={ratio}
-              size={120}
-              stroke={6}
+              size={160}
+              stroke={7}
               tone={ratio >= 0.6 ? 'success' : 'ink'}
             >
               <span className="text-center">
-                <span className="block gp-display" style={{ fontSize: 32, lineHeight: 1, color: 'var(--gp-ink)' }}>
+                <span className="block gp-display" style={{ fontSize: 40, lineHeight: 1, color: 'var(--gp-ink)' }}>
                   {score}
                 </span>
-                <span className="block text-[11px] gp-mono mt-1" style={{ color: 'var(--gp-ink-4)' }}>
+                <span className="block text-[12px] gp-mono mt-1" style={{ color: 'var(--gp-ink-4)' }}>
                   из {total}
                 </span>
               </span>
             </ProgressRing>
+          </motion.div>
 
-            <div className="flex-1 min-w-[200px]">
-              <div className="gp-eyebrow">Точность</div>
-              <div className="gp-display mt-2" style={{ fontSize: 36 }}>
-                {Math.round(ratio * 100)}%
+          {/* Verdict */}
+          <motion.h1 variants={staggerChild} className="gp-display mt-6" style={{ fontSize: 'clamp(36px, 5vw, 56px)' }}>
+            <em>{verdict}.</em>
+          </motion.h1>
+
+          {/* Stat cards */}
+          <motion.div variants={fadeUp} className="mt-8 w-full grid grid-cols-3 gap-3">
+            {[
+              { label: 'Точность', value: `${Math.round(ratio * 100)}%`, color: ratio >= 0.6 ? 'var(--gp-success)' : 'var(--gp-danger)' },
+              { label: 'Верно', value: String(score), color: 'var(--gp-ink)' },
+              { label: 'Ошибки', value: String(total - score), color: total - score > 0 ? 'var(--gp-danger)' : 'var(--gp-ink-4)' },
+            ].map(({ label, value, color }) => (
+              <div
+                key={label}
+                className="rounded-lg py-4 px-3"
+                style={{ background: 'var(--gp-surface)', border: '1px solid var(--gp-border)' }}
+              >
+                <div className="gp-eyebrow">{label}</div>
+                <div className="gp-display mt-2" style={{ fontSize: 28, color }}>{value}</div>
               </div>
-              <div className="mt-2 text-[13px]" style={{ color: 'var(--gp-ink-3)' }}>
-                {score} верно · {total - score} мимо
-              </div>
-            </div>
+            ))}
           </motion.div>
 
           {/* Per-question dots */}
-          <motion.div variants={fadeUp} className="mt-12">
+          <motion.div variants={fadeUp} className="mt-8 w-full">
             <div className="gp-eyebrow mb-3">Ход квиза</div>
-            <div className="flex items-center gap-1 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap justify-center">
               {history.map((h, i) => (
                 <span
                   key={i}
-                  title={`Вопрос ${i + 1}: ${h.correct ? 'верно' : 'не верно'}`}
-                  className="inline-block w-3 h-3 rounded-full"
-                  style={{
-                    background: h.correct ? 'var(--gp-success)' : 'var(--gp-danger)',
-                    opacity: h.correct ? 1 : 0.85,
-                  }}
-                />
+                  onMouseEnter={() => setHoveredDot(i)}
+                  onMouseLeave={() => setHoveredDot(null)}
+                  style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <span
+                    className="inline-block w-3 h-3 rounded-full"
+                    style={{
+                      background: h.correct ? 'var(--gp-success)' : 'var(--gp-danger)',
+                      opacity: h.correct ? 1 : 0.85,
+                      transform: hoveredDot === i ? 'scale(1.4)' : 'scale(1)',
+                      transition: 'transform 0.12s ease',
+                    }}
+                  />
+                  {hoveredDot === i && questionChapterMap[h.questionId] && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        bottom: 'calc(100% + 7px)',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        whiteSpace: 'nowrap',
+                        fontSize: '11px',
+                        padding: '3px 8px',
+                        borderRadius: '5px',
+                        background: 'var(--gp-ink)',
+                        color: 'var(--gp-bg)',
+                        pointerEvents: 'none',
+                        zIndex: 10,
+                      }}
+                    >
+                      {questionChapterMap[h.questionId]}
+                    </span>
+                  )}
+                </span>
               ))}
             </div>
           </motion.div>
 
-          <motion.div variants={fadeUp} className="mt-12 flex items-center gap-3 flex-wrap">
+          {/* Actions */}
+          <motion.div variants={fadeUp} className="mt-10 flex items-center gap-3 flex-wrap justify-center">
             <Button variant="primary" size="lg" onClick={onRetry} iconRight={<ArrowRight size={14} />}>
               Пройти ещё раз
             </Button>
