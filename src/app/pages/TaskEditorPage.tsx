@@ -1,30 +1,33 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link } from 'react-router';
-import { ChevronRight, ChevronLeft, Play, Sparkles, CheckCircle2, AlertCircle, History, XCircle, ChevronDown } from 'lucide-react';
+import {
+  ChevronRight, ChevronLeft, Play, Sparkles, Check, AlertCircle, History,
+  XCircle, ChevronDown, FileText, RotateCcw, Loader2,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { fetchTask, submitTask, analyzeTask, analyzeErrorTask, fetchTaskChapters, type TaskDetail, type TaskChapter } from '../api';
+import {
+  fetchTask, submitTask, analyzeTask, analyzeErrorTask, fetchTaskChapters,
+  type TaskDetail, type TaskChapter,
+} from '../api';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { CodeEditor } from '../components/CodeEditor';
 import { TestResults, type TestResult } from '../components/TestResults';
 import { DifficultyBadge } from '../components/DifficultyBadge';
 import { SplitPane } from '../components/SplitPane';
 import { useAuth } from '../context/AuthContext';
+import { useGopherMood } from '../context/GopherMoodContext';
+import { Button } from '../design';
+import { dur, ease } from '../design/motion';
+import { cn } from '../components/ui/utils';
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)} · ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-interface NavItem {
-  href: string;
-  title: string;
-}
-
-interface TaskNav {
-  prev: NavItem | null;
-  next: NavItem | null;
-}
+interface NavItem { href: string; title: string; }
+interface TaskNav { prev: NavItem | null; next: NavItem | null; }
 
 function buildTaskNav(chapters: TaskChapter[], chapterSlug: string, taskSlug: string): TaskNav {
   const sorted = [...chapters].sort((a, b) => a.order - b.order);
@@ -69,6 +72,7 @@ function buildTaskNav(chapters: TaskChapter[], chapterSlug: string, taskSlug: st
 export function TaskEditorPage() {
   const { chapterId, taskId } = useParams<{ chapterId: string; taskId: string }>();
   const { user } = useAuth();
+  const { setMood } = useGopherMood();
 
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,21 +91,24 @@ export function TaskEditorPage() {
   const historyRef = useRef<HTMLDivElement>(null);
   const lastSubmittedCodeRef = useRef<string | null>(null);
 
+  // Close history on outside click
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
+    function onClickOutside(e: MouseEvent) {
       if (historyRef.current && !historyRef.current.contains(e.target as Node)) {
         setHistoryOpen(false);
       }
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
   }, []);
 
   useEffect(() => {
     if (!chapterId || !taskId) return;
+    let cancelled = false;
     setIsLoading(true);
 
     const taskPromise = fetchTask(chapterId, taskId).then((data) => {
+      if (cancelled) return;
       setTask(data);
       setSubmitted(data.solved || false);
       setAiRecommendation('');
@@ -126,15 +133,18 @@ export function TaskEditorPage() {
     });
 
     const chaptersPromise = fetchTaskChapters().then((chapters) => {
+      if (cancelled) return;
       setNav(buildTaskNav(chapters, chapterId, taskId));
     });
 
     Promise.all([taskPromise, chaptersPromise])
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
+      .catch((err) => { if (!cancelled) console.error(err); })
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+
+    return () => { cancelled = true; };
   }, [chapterId, taskId]);
 
-  const submissions = task?.submissions || [];
+  const submissions = useMemo(() => task?.submissions || [], [task]);
 
   const handleSelectSubmission = (idx: number) => {
     const sub = submissions[idx];
@@ -168,20 +178,36 @@ export function TaskEditorPage() {
     setActiveTab('tests');
     try {
       const result = await submitTask(chapterId, taskId, code);
-      const results: TestResult[] = (result.tests || []).map((t) => ({ id: t.name, name: t.name, passed: t.passed, output: t.output, expected: '' }));
+      const results: TestResult[] = (result.tests || []).map((t) => ({
+        id: t.name, name: t.name, passed: t.passed, output: t.output, expected: '',
+      }));
       if (result.error && results.length === 0) {
         results.push({ id: 'error', name: 'Ошибка компиляции', passed: false, output: result.error, expected: '' });
       }
       setTestResults(results);
-      if (result.passed) { setSubmitted(true); lastSubmittedCodeRef.current = code; }
+      if (result.passed) {
+        setSubmitted(true);
+        lastSubmittedCodeRef.current = code;
+        setMood('happy');
+      } else {
+        setMood('sad');
+      }
       setSelectedSubmissionIdx(null);
-      fetchTask(chapterId, taskId).then((data) => { setTask(data); if (data.submissions?.length) setSelectedSubmissionIdx(0); }).catch(() => {});
+      fetchTask(chapterId, taskId)
+        .then((data) => { setTask(data); if (data.submissions?.length) setSelectedSubmissionIdx(0); })
+        .catch(() => {});
     } catch (error) {
       setTestResults([{ id: 'error', name: 'Ошибка', passed: false, output: error instanceof Error ? error.message : 'Произошла ошибка', expected: '' }]);
+      setMood('sad');
     } finally {
       setIsRunning(false);
     }
   };
+
+  const allPassed = testResults.length > 0 && testResults.every((r) => r.passed);
+  const hasFailed = testResults.length > 0 && testResults.some((r) => !r.passed);
+  const codeChanged = allPassed && lastSubmittedCodeRef.current !== null && code !== lastSubmittedCodeRef.current;
+  const aiEnabled = (allPassed && !codeChanged) || hasFailed;
 
   const handleGetAI = async () => {
     if (!chapterId || !taskId) return;
@@ -189,17 +215,12 @@ export function TaskEditorPage() {
     setActiveTab('ai');
     try {
       if (allPassed && !codeChanged) {
-        // Tests passed — analyze the solution
         setAiMode('solution');
         const result = await analyzeTask(chapterId, taskId, code);
         setAiRecommendation(result.recommendation);
       } else if (hasFailed) {
-        // Tests failed — analyze the error
         setAiMode('error');
-        const errorText = testResults
-          .filter((r) => !r.passed)
-          .map((r) => r.output)
-          .join('\n');
+        const errorText = testResults.filter((r) => !r.passed).map((r) => r.output).join('\n');
         const result = await analyzeErrorTask(chapterId, taskId, code, errorText);
         setAiRecommendation(result.analysis);
       }
@@ -210,292 +231,506 @@ export function TaskEditorPage() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 56px)', background: 'var(--go-bg)' }}>
-        <div style={{ fontSize: '14px', color: 'var(--go-muted)' }}>Загрузка...</div>
-      </div>
-    );
-  }
+  // ⌘+Enter / Ctrl+Enter to submit
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (!isRunning && user) handleSubmit();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRunning, user, code, chapterId, taskId]);
+
+  if (isLoading) return <EditorSkeleton />;
 
   if (!task) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 56px)', background: 'var(--go-bg)' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
-          <h2 style={{ color: 'var(--go-text)', marginBottom: '8px' }}>Задача не найдена</h2>
-          <Link to="/tasks" style={{ color: 'var(--go-cyan)', textDecoration: 'none' }}>← К задачам</Link>
+      <div className="min-h-[calc(100vh-60px)] grid place-items-center" style={{ background: 'var(--gp-bg)' }}>
+        <div className="text-center">
+          <p className="gp-eyebrow">404 · Задача не найдена</p>
+          <h2 className="gp-display mt-3" style={{ fontSize: '32px' }}>Задача не <em>найдена</em>.</h2>
+          <Link to="/tasks" className="mt-6 inline-flex items-center gap-2 text-[14px] underline underline-offset-4" style={{ color: 'var(--gp-ink)' }}>
+            <ChevronLeft size={14} /> К задачам
+          </Link>
         </div>
       </div>
     );
   }
 
-  const allPassed = testResults.length > 0 && testResults.every((r) => r.passed);
-  const hasFailed = testResults.length > 0 && testResults.some((r) => !r.passed);
-  const codeChanged = allPassed && lastSubmittedCodeRef.current !== null && code !== lastSubmittedCodeRef.current;
-  const aiEnabled = (allPassed && !codeChanged) || hasFailed;
-
   return (
-    <div style={{ background: 'var(--go-bg)', height: 'calc(100vh - 56px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* Breadcrumb */}
-      <div style={{ borderBottom: '1px solid var(--go-border)', padding: '8px 16px', background: 'var(--go-surface)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', flexShrink: 0 }}>
-        <Link to="/tasks" style={{ fontSize: '13px', color: 'var(--go-muted)', textDecoration: 'none' }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--go-text)')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--go-muted)')}
-        >Задачи</Link>
-        <ChevronRight size={13} style={{ color: 'var(--go-subtle)' }} />
-        <span style={{ fontSize: '13px', color: 'var(--go-muted)' }}>{task.chapter_title}</span>
-        <ChevronRight size={13} style={{ color: 'var(--go-subtle)' }} />
-        <span style={{ fontSize: '13px', color: 'var(--go-text)' }}>{task.title}</span>
-        <DifficultyBadge difficulty={task.difficulty} size="sm" />
-        {submitted && (
-          <span style={{ fontSize: '12px', color: 'var(--go-green)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
-            <CheckCircle2 size={13} /> Решена
-          </span>
-        )}
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          {nav.prev && (
-            <Link
-              to={nav.prev.href}
-              title={nav.prev.title}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px',
-                borderRadius: '6px', border: '1px solid var(--go-border)',
-                background: 'var(--go-surface)', color: 'var(--go-muted)',
-                fontSize: '12px', fontWeight: 500, textDecoration: 'none',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--go-cyan)'; e.currentTarget.style.color = 'var(--go-text)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--go-border)'; e.currentTarget.style.color = 'var(--go-muted)'; }}
-            >
-              <ChevronLeft size={12} /> Пред.
-            </Link>
+    <div className="flex flex-col overflow-hidden" style={{ background: 'var(--gp-bg)', height: 'calc(100vh - 60px)' }}>
+      {/* Top bar */}
+      <div
+        className="flex items-center gap-3 px-4 h-12 flex-shrink-0"
+        style={{ borderBottom: '1px solid var(--gp-border)', background: 'var(--gp-surface)' }}
+      >
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 min-w-0 text-[12.5px]">
+          <Link to="/tasks" className="no-underline hover:underline underline-offset-4 flex-shrink-0" style={{ color: 'var(--gp-ink-3)' }}>
+            Задачи
+          </Link>
+          <ChevronRight size={12} style={{ color: 'var(--gp-ink-4)' }} />
+          <span className="truncate" style={{ color: 'var(--gp-ink-3)' }}>{task.chapter_title}</span>
+          <ChevronRight size={12} style={{ color: 'var(--gp-ink-4)' }} />
+          <span className="truncate font-medium" style={{ color: 'var(--gp-ink)' }}>{task.title}</span>
+        </div>
+
+        {/* Status + difficulty */}
+        <div className="flex items-center gap-2.5 flex-shrink-0">
+          <DifficultyBadge difficulty={task.difficulty} variant="glyph" />
+          {submitted && (
+            <span className="inline-flex items-center gap-1 text-[12px] font-medium" style={{ color: 'var(--gp-success)' }}>
+              <Check size={12} strokeWidth={2.5} /> Решена
+            </span>
           )}
-          {nav.next && (
-            <Link
-              to={nav.next.href}
-              title={nav.next.title}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px',
-                borderRadius: '6px', border: '1px solid var(--go-border)',
-                background: 'var(--go-surface)', color: 'var(--go-muted)',
-                fontSize: '12px', fontWeight: 500, textDecoration: 'none',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--go-cyan)'; e.currentTarget.style.color = 'var(--go-text)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--go-border)'; e.currentTarget.style.color = 'var(--go-muted)'; }}
-            >
-              След. <ChevronRight size={12} />
-            </Link>
-          )}
+        </div>
+
+        {/* Right: prev/next */}
+        <div className="ml-auto flex items-center gap-1">
+          <NavArrowButton item={nav.prev} direction="prev" />
+          <NavArrowButton item={nav.next} direction="next" />
         </div>
       </div>
 
-      {/* Main resizable layout: description | code+tests */}
-      <SplitPane direction="horizontal" defaultSize={40} minSize={20} maxSize={70} style={{ flex: 1 }}>
-        {/* Left: Task description */}
-        <div style={{ height: '100%', overflowY: 'auto', padding: '24px 24px 40px' }}>
-          <MarkdownRenderer content={task.description} />
+      {/* Body — split panes */}
+      <SplitPane direction="horizontal" defaultSize={42} minSize={22} maxSize={70} style={{ flex: 1 }}>
+        {/* Left: description */}
+        <div className="h-full overflow-y-auto" style={{ background: 'var(--gp-bg)' }}>
+          <div className="px-8 py-7 max-w-[680px]">
+            <div className="gp-eyebrow flex items-center gap-2">
+              <FileText size={11} /> Условие
+            </div>
+            <h1 className="gp-display mt-2" style={{ fontSize: 'clamp(22px, 2.4vw, 30px)', lineHeight: 1.2 }}>
+              {task.title}
+            </h1>
+            <div className="gp-divider mt-5 mb-7" />
+            <MarkdownRenderer content={task.description} />
+          </div>
         </div>
 
-        {/* Right: code (top) + tests (bottom) */}
-        <SplitPane direction="vertical" defaultSize={55} minSize={20} maxSize={85} style={{ height: '100%' }}>
-          {/* Top: editor + submission bar */}
-          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-            {/* Submission history bar */}
-            {submissions.length > 0 && (
-              <div style={{
-                padding: '6px 12px', borderBottom: '1px solid var(--go-border)',
-                background: 'var(--go-surface)', display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0,
-              }}>
-                <History size={13} style={{ color: 'var(--go-muted)', flexShrink: 0 }} />
-                <span style={{ fontSize: '11px', color: 'var(--go-muted)', flexShrink: 0 }}>Решения ({submissions.length})</span>
-                <div ref={historyRef} style={{ position: 'relative', flex: 1 }}>
-                  <button
-                    onClick={() => setHistoryOpen(!historyOpen)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 8px',
-                      borderRadius: '6px', background: 'var(--go-bg)', border: '1px solid var(--go-border-2)',
-                      color: 'var(--go-text-secondary)', fontSize: '11px', cursor: 'pointer',
-                      fontFamily: 'Manrope, sans-serif', width: '100%', maxWidth: '320px',
-                    }}
-                  >
-                    {selectedSubmissionIdx !== null && submissions[selectedSubmissionIdx] ? (
-                      <>
-                        {submissions[selectedSubmissionIdx].passed
-                          ? <CheckCircle2 size={11} style={{ color: 'var(--go-green)', flexShrink: 0 }} />
-                          : <XCircle size={11} style={{ color: 'var(--go-red)', flexShrink: 0 }} />
-                        }
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDate(submissions[selectedSubmissionIdx].created_at)}</span>
-                        <span style={{ color: submissions[selectedSubmissionIdx].passed ? 'var(--go-green)' : 'var(--go-red)', fontWeight: 600, flexShrink: 0 }}>
-                          {submissions[selectedSubmissionIdx].passed ? 'Успешно' : 'Ошибка'}
-                        </span>
-                      </>
-                    ) : (
-                      <span style={{ color: 'var(--go-muted)' }}>Шаблон задачи</span>
-                    )}
-                    <ChevronDown size={11} style={{ color: 'var(--go-muted)', marginLeft: 'auto', flexShrink: 0 }} />
-                  </button>
-                  <AnimatePresence>
-                    {historyOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-                        transition={{ duration: 0.15 }}
-                        style={{
-                          position: 'absolute', top: 'calc(100% + 4px)', left: 0, width: '100%', maxWidth: '320px',
-                          maxHeight: '240px', overflowY: 'auto', background: 'var(--go-surface)',
-                          border: '1px solid var(--go-border-2)', borderRadius: '10px',
-                          boxShadow: '0 8px 32px rgba(0,0,0,0.15)', zIndex: 20, padding: '4px',
-                        }}
-                      >
-                        <button
-                          onClick={handleUseTemplate}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '6px 8px',
-                            borderRadius: '6px', background: selectedSubmissionIdx === null ? 'var(--go-surface-2)' : 'transparent',
-                            border: 'none', cursor: 'pointer', textAlign: 'left', color: 'var(--go-muted)',
-                            fontSize: '11px', fontFamily: 'Manrope, sans-serif',
-                            borderBottom: '1px solid var(--go-border)', marginBottom: '2px',
-                          }}
-                          onMouseEnter={(e) => { if (selectedSubmissionIdx !== null) e.currentTarget.style.background = 'var(--go-surface-2)'; }}
-                          onMouseLeave={(e) => { if (selectedSubmissionIdx !== null) e.currentTarget.style.background = 'transparent'; }}
-                        >↺ Шаблон задачи</button>
-                        {submissions.map((sub, idx) => (
-                          <button
-                            key={sub.id}
-                            onClick={() => handleSelectSubmission(idx)}
-                            style={{
-                              display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '6px 8px',
-                              borderRadius: '6px', background: selectedSubmissionIdx === idx ? 'var(--go-surface-2)' : 'transparent',
-                              border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'Manrope, sans-serif',
-                            }}
-                            onMouseEnter={(e) => { if (selectedSubmissionIdx !== idx) e.currentTarget.style.background = 'var(--go-surface-2)'; }}
-                            onMouseLeave={(e) => { if (selectedSubmissionIdx !== idx) e.currentTarget.style.background = 'transparent'; }}
-                          >
-                            {sub.passed
-                              ? <CheckCircle2 size={12} style={{ color: 'var(--go-green)', flexShrink: 0 }} />
-                              : <XCircle size={12} style={{ color: 'var(--go-red)', flexShrink: 0 }} />
-                            }
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: '11px', color: 'var(--go-text-secondary)' }}>{formatDate(sub.created_at)}</div>
-                              <div style={{ fontSize: '10px', color: sub.passed ? 'var(--go-green)' : 'var(--go-red)', fontWeight: 600 }}>
-                                {sub.passed ? 'Все тесты пройдены' : 'Тесты не пройдены'}
-                              </div>
-                            </div>
-                            {idx === 0 && (
-                              <span style={{ fontSize: '9px', color: 'var(--go-muted)', background: 'var(--go-border-2)', padding: '1px 5px', borderRadius: '4px', flexShrink: 0 }}>Последнее</span>
-                            )}
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+        {/* Right: editor + tests */}
+        <SplitPane direction="vertical" defaultSize={58} minSize={20} maxSize={85} style={{ height: '100%' }}>
+          {/* Top: editor */}
+          <div className="flex flex-col h-full overflow-hidden" style={{ background: 'var(--gp-bg)' }}>
+            {/* Editor toolbar */}
+            <div
+              className="flex items-center gap-2 px-3 h-10 flex-shrink-0"
+              style={{ borderBottom: '1px solid var(--gp-border)', background: 'var(--gp-surface)' }}
+            >
+              <span className="gp-mono text-[11.5px] flex items-center gap-1.5" style={{ color: 'var(--gp-ink-3)' }}>
+                <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: 'var(--gp-accent)' }} />
+                main.go
+              </span>
+
+              {submissions.length > 0 && (
+                <SubmissionPicker
+                  submissions={submissions}
+                  selectedIdx={selectedSubmissionIdx}
+                  open={historyOpen}
+                  onOpen={() => setHistoryOpen((v) => !v)}
+                  onSelect={handleSelectSubmission}
+                  onUseTemplate={handleUseTemplate}
+                  refEl={historyRef}
+                />
+              )}
+
+              <div className="ml-auto flex items-center gap-1">
+                <IconButton onClick={handleUseTemplate} title="Сбросить к шаблону" icon={<RotateCcw size={13} />} />
               </div>
-            )}
+            </div>
 
             {/* Code editor */}
-            <div style={{ flex: 1, overflow: 'hidden', padding: '8px 8px 0' }}>
-              <CodeEditor value={code} onChange={setCode} defaultValue={task.template} height="100%" completions={task.completions} />
+            <div className="flex-1 overflow-hidden">
+              <CodeEditor key={`${chapterId}-${taskId}`} value={code} onChange={setCode} defaultValue={task.template} height="100%" completions={task.completions} />
             </div>
 
             {/* Submit bar */}
-            <div style={{ padding: '8px 12px', borderTop: '1px solid var(--go-border)', display: 'flex', gap: '8px', alignItems: 'center', background: 'var(--go-surface)', flexShrink: 0 }}>
-              <button
+            <div
+              className="flex items-center gap-2 px-3 h-12 flex-shrink-0"
+              style={{ borderTop: '1px solid var(--gp-border)', background: 'var(--gp-surface)' }}
+            >
+              <Button
+                size="sm"
+                variant="primary"
                 onClick={handleSubmit}
                 disabled={isRunning || !user}
-                title={!user ? 'Войдите, чтобы отправить решение' : undefined}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 16px',
-                  borderRadius: '8px', background: (isRunning || !user) ? 'var(--go-border-2)' : 'var(--go-cyan)',
-                  border: 'none', color: (isRunning || !user) ? 'var(--go-muted)' : '#fff',
-                  fontSize: '12px', fontWeight: 700, cursor: (isRunning || !user) ? 'not-allowed' : 'pointer',
-                  fontFamily: 'Manrope, sans-serif',
-                }}
-                onMouseEnter={(e) => { if (!isRunning && user) e.currentTarget.style.background = 'var(--go-cyan-hover)'; }}
-                onMouseLeave={(e) => { if (!isRunning && user) e.currentTarget.style.background = 'var(--go-cyan)'; }}
+                loading={isRunning}
+                iconLeft={!isRunning ? <Play size={12} /> : undefined}
+                title={!user ? 'Войди, чтобы отправить решение' : undefined}
               >
-                <Play size={12} />
-                {isRunning ? 'Проверяется...' : 'Отправить'}
-              </button>
+                {isRunning ? 'Проверяется' : 'Отправить'}
+              </Button>
 
-              <button
+              <span className="hidden lg:inline-flex items-center gap-1 text-[11px]" style={{ color: 'var(--gp-ink-4)' }}>
+                <kbd
+                  className="gp-mono px-1.5 py-0.5 rounded text-[10px]"
+                  style={{ background: 'var(--gp-surface-muted)', color: 'var(--gp-ink-3)', border: '1px solid var(--gp-border)' }}
+                >⌘ ⏎</kbd>
+              </span>
+
+              <Button
+                size="sm"
+                variant="ghost"
                 onClick={handleGetAI}
                 disabled={!aiEnabled || isLoadingAI}
-                title={codeChanged ? 'Код изменён — отправьте решение заново' : allPassed ? 'AI-анализ решения' : hasFailed ? 'AI-анализ ошибок' : 'Отправьте решение для AI-анализа'}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px',
-                  borderRadius: '8px', background: 'transparent',
-                  border: '1px solid', borderColor: aiEnabled ? (hasFailed ? 'var(--go-red)' : 'var(--go-amber)') : 'var(--go-border-2)',
-                  color: aiEnabled ? (hasFailed ? 'var(--go-red)' : 'var(--go-amber)') : 'var(--go-subtle)',
-                  fontSize: '12px', fontWeight: 600,
-                  cursor: aiEnabled && !isLoadingAI ? 'pointer' : 'not-allowed',
-                  opacity: aiEnabled ? 1 : 0.5, fontFamily: 'Manrope, sans-serif',
-                }}
-                onMouseEnter={(e) => { if (aiEnabled && !isLoadingAI) e.currentTarget.style.background = hasFailed ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)'; }}
-                onMouseLeave={(e) => { if (aiEnabled && !isLoadingAI) e.currentTarget.style.background = 'transparent'; }}
+                loading={isLoadingAI}
+                iconLeft={!isLoadingAI ? <Sparkles size={12} /> : undefined}
+                title={
+                  codeChanged ? 'Код изменён — отправь решение заново' :
+                  allPassed ? 'AI-разбор решения' :
+                  hasFailed ? 'AI-анализ ошибок' :
+                  'Отправь решение для AI-анализа'
+                }
               >
-                <Sparkles size={12} />
-                {isLoadingAI ? 'Анализ...' : hasFailed ? 'Анализ ошибок' : 'Анализ решения'}
-              </button>
+                {isLoadingAI ? 'Анализ' : hasFailed ? 'Разбор ошибок' : 'AI-разбор'}
+              </Button>
 
-              {allPassed && (
-                <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--go-green)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <CheckCircle2 size={12} /> Все тесты пройдены!
-                </span>
-              )}
+              <AnimatePresence>
+                {allPassed && !codeChanged && (
+                  <motion.span
+                    initial={{ opacity: 0, x: -6 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -6 }}
+                    transition={{ duration: dur.base, ease: ease.emphasized }}
+                    className="ml-auto inline-flex items-center gap-1.5 text-[12px] font-medium"
+                    style={{ color: 'var(--gp-success)' }}
+                  >
+                    <Check size={12} strokeWidth={2.5} /> Все тесты пройдены
+                  </motion.span>
+                )}
+                {codeChanged && (
+                  <motion.span
+                    initial={{ opacity: 0, x: -6 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -6 }}
+                    className="ml-auto inline-flex items-center gap-1.5 text-[12px]"
+                    style={{ color: 'var(--gp-warning)' }}
+                  >
+                    <AlertCircle size={12} /> Код изменён, отправь заново
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
-          {/* Bottom: Test results / AI */}
-          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', borderBottom: '1px solid var(--go-border)', background: 'var(--go-surface)', flexShrink: 0 }}>
-              {[
-                { id: 'tests', label: 'Тесты' },
-                { id: 'ai', label: '✦ AI Анализ' },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as 'tests' | 'ai')}
-                  style={{
-                    padding: '7px 14px', background: 'none', border: 'none',
-                    borderBottom: `2px solid ${activeTab === tab.id ? 'var(--go-cyan)' : 'transparent'}`,
-                    color: activeTab === tab.id ? 'var(--go-text)' : 'var(--go-muted)',
-                    fontSize: '12px', fontWeight: activeTab === tab.id ? 600 : 400,
-                    cursor: 'pointer', fontFamily: 'Manrope, sans-serif',
-                  }}
-                >{tab.label}</button>
-              ))}
+          {/* Bottom: tests / AI */}
+          <div className="flex flex-col h-full overflow-hidden" style={{ background: 'var(--gp-bg)' }}>
+            <div
+              className="flex items-center gap-1 px-3 h-10 flex-shrink-0"
+              style={{ borderBottom: '1px solid var(--gp-border)', background: 'var(--gp-surface)' }}
+            >
+              <TabButton active={activeTab === 'tests'} onClick={() => setActiveTab('tests')} count={testResults.length}>
+                Тесты
+              </TabButton>
+              <TabButton active={activeTab === 'ai'} onClick={() => setActiveTab('ai')}>
+                AI-разбор
+              </TabButton>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+
+            <div className="flex-1 overflow-y-auto px-4 py-3.5">
               {activeTab === 'tests' && <TestResults results={testResults} isRunning={isRunning} />}
               {activeTab === 'ai' && (
-                <div>
-                  {isLoadingAI ? (
-                    <div style={{ textAlign: 'center', padding: '32px 16px' }}>
-                      <div style={{ width: '28px', height: '28px', border: '3px solid var(--go-border-2)', borderTopColor: aiMode === 'error' ? 'var(--go-red)' : 'var(--go-amber)', borderRadius: '50%', margin: '0 auto 12px' }} className="animate-spin" />
-                      <div style={{ fontSize: '13px', color: 'var(--go-muted)' }}>{aiMode === 'error' ? 'Анализируем ошибки...' : 'Анализируем решение...'}</div>
-                    </div>
-                  ) : aiRecommendation ? (
-                    <div style={{ background: aiMode === 'error' ? 'rgba(239,68,68,0.06)' : 'rgba(245,158,11,0.06)', border: `1px solid ${aiMode === 'error' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)'}`, borderRadius: '10px', padding: '14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-                        {aiMode === 'error' ? <AlertCircle size={14} style={{ color: 'var(--go-red)' }} /> : <Sparkles size={14} style={{ color: 'var(--go-amber)' }} />}
-                        <span style={{ fontSize: '12px', fontWeight: 700, color: aiMode === 'error' ? 'var(--go-red)' : 'var(--go-amber)' }}>{aiMode === 'error' ? 'AI-анализ ошибок' : 'AI-анализ решения'}</span>
-                      </div>
-                      <MarkdownRenderer content={aiRecommendation} />
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: '32px 16px' }}>
-                      <AlertCircle size={28} style={{ color: 'var(--go-subtle)', marginBottom: '10px' }} />
-                      <div style={{ fontSize: '13px', color: 'var(--go-muted)' }}>
-                        {allPassed ? 'Нажмите «Анализ решения» чтобы получить рекомендации' : hasFailed ? 'Нажмите «Анализ ошибок» чтобы понять причину ошибки' : 'Отправьте решение для AI-анализа'}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <AIPanel
+                  loading={isLoadingAI}
+                  recommendation={aiRecommendation}
+                  mode={aiMode}
+                  hint={
+                    !aiEnabled
+                      ? 'Сначала отправь решение — после прогона тестов AI разберёт код или ошибки.'
+                      : codeChanged
+                      ? 'Код изменился. Отправь решение заново, чтобы получить актуальный разбор.'
+                      : null
+                  }
+                />
               )}
             </div>
           </div>
         </SplitPane>
       </SplitPane>
+    </div>
+  );
+}
+
+/* ------------- Sub-components ------------- */
+
+function NavArrowButton({ item, direction }: { item: NavItem | null; direction: 'prev' | 'next' }) {
+  const isPrev = direction === 'prev';
+  const Icon = isPrev ? ChevronLeft : ChevronRight;
+
+  if (!item) {
+    return (
+      <span className="w-8 h-8 inline-flex items-center justify-center rounded-md opacity-40" style={{ color: 'var(--gp-ink-4)' }}>
+        <Icon size={14} />
+      </span>
+    );
+  }
+
+  return (
+    <Link
+      to={item.href}
+      title={item.title}
+      className="w-8 h-8 inline-flex items-center justify-center rounded-md transition-colors no-underline"
+      style={{ color: 'var(--gp-ink-3)' }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--gp-surface-muted)'; e.currentTarget.style.color = 'var(--gp-ink)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--gp-ink-3)'; }}
+    >
+      <Icon size={14} />
+    </Link>
+  );
+}
+
+function IconButton({ onClick, title, icon }: { onClick: () => void; title: string; icon: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      className="w-7 h-7 inline-flex items-center justify-center rounded-md transition-colors"
+      style={{ color: 'var(--gp-ink-3)' }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--gp-surface-muted)'; e.currentTarget.style.color = 'var(--gp-ink)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--gp-ink-3)'; }}
+    >
+      {icon}
+    </button>
+  );
+}
+
+function TabButton({
+  active, onClick, children, count,
+}: { active: boolean; onClick: () => void; children: React.ReactNode; count?: number }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'relative px-2.5 h-7 inline-flex items-center gap-1.5 rounded text-[12.5px] transition-colors',
+      )}
+      style={{
+        color: active ? 'var(--gp-ink)' : 'var(--gp-ink-3)',
+        fontWeight: active ? 500 : 400,
+      }}
+      onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = 'var(--gp-ink)'; }}
+      onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = 'var(--gp-ink-3)'; }}
+    >
+      {children}
+      {count !== undefined && count > 0 && (
+        <span
+          className="text-[10.5px] gp-mono px-1 rounded"
+          style={{
+            background: active ? 'var(--gp-ink)' : 'var(--gp-surface-muted)',
+            color: active ? 'var(--gp-bg)' : 'var(--gp-ink-3)',
+          }}
+        >
+          {count}
+        </span>
+      )}
+      {active && (
+        <motion.span
+          layoutId="editor-tab-active"
+          className="absolute left-2 right-2 -bottom-[5px] h-px"
+          style={{ background: 'var(--gp-ink)' }}
+          transition={{ duration: dur.base, ease: ease.emphasized }}
+        />
+      )}
+    </button>
+  );
+}
+
+interface SubmissionPickerProps {
+  submissions: NonNullable<TaskDetail['submissions']>;
+  selectedIdx: number | null;
+  open: boolean;
+  onOpen: () => void;
+  onSelect: (idx: number) => void;
+  onUseTemplate: () => void;
+  refEl: React.RefObject<HTMLDivElement | null>;
+}
+
+function SubmissionPicker({
+  submissions, selectedIdx, open, onOpen, onSelect, onUseTemplate, refEl,
+}: SubmissionPickerProps) {
+  const current = selectedIdx !== null ? submissions[selectedIdx] : null;
+
+  return (
+    <div ref={refEl} className="relative">
+      <button
+        onClick={onOpen}
+        className="flex items-center gap-1.5 h-7 px-2 rounded text-[11.5px] transition-colors max-w-[220px]"
+        style={{
+          background: open ? 'var(--gp-surface-muted)' : 'transparent',
+          color: 'var(--gp-ink-2)',
+          border: '1px solid',
+          borderColor: open ? 'var(--gp-border)' : 'transparent',
+        }}
+        onMouseEnter={(e) => { if (!open) e.currentTarget.style.background = 'var(--gp-surface-muted)'; }}
+        onMouseLeave={(e) => { if (!open) e.currentTarget.style.background = 'transparent'; }}
+      >
+        <History size={11.5} style={{ color: 'var(--gp-ink-4)' }} />
+        {current ? (
+          <>
+            {current.passed
+              ? <Check size={10} strokeWidth={2.5} style={{ color: 'var(--gp-success)' }} />
+              : <XCircle size={10} style={{ color: 'var(--gp-danger)' }} />}
+            <span className="gp-mono truncate">{formatDate(current.created_at)}</span>
+          </>
+        ) : (
+          <span style={{ color: 'var(--gp-ink-3)' }}>Шаблон</span>
+        )}
+        <ChevronDown size={11} style={{ color: 'var(--gp-ink-4)' }} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: dur.base, ease: ease.emphasized }}
+            className="absolute top-[calc(100%+6px)] left-0 z-30 w-[300px] max-h-[280px] overflow-y-auto rounded-lg"
+            style={{
+              background: 'var(--gp-surface)',
+              border: '1px solid var(--gp-border)',
+              boxShadow: 'var(--gp-shadow-lg)',
+            }}
+          >
+            <div className="p-1">
+              <button
+                onClick={onUseTemplate}
+                className="w-full flex items-center gap-2 px-2 py-2 rounded text-[12px] text-left transition-colors"
+                style={{
+                  background: selectedIdx === null ? 'var(--gp-surface-muted)' : 'transparent',
+                  color: 'var(--gp-ink-2)',
+                }}
+                onMouseEnter={(e) => { if (selectedIdx !== null) e.currentTarget.style.background = 'var(--gp-surface-muted)'; }}
+                onMouseLeave={(e) => { if (selectedIdx !== null) e.currentTarget.style.background = 'transparent'; }}
+              >
+                <RotateCcw size={11} style={{ color: 'var(--gp-ink-4)' }} />
+                Шаблон задачи
+              </button>
+              <div className="h-px my-1" style={{ background: 'var(--gp-border)' }} />
+              {submissions.map((sub, idx) => (
+                <button
+                  key={sub.id}
+                  onClick={() => onSelect(idx)}
+                  className="w-full flex items-center gap-2 px-2 py-2 rounded text-left transition-colors"
+                  style={{ background: selectedIdx === idx ? 'var(--gp-surface-muted)' : 'transparent' }}
+                  onMouseEnter={(e) => { if (selectedIdx !== idx) e.currentTarget.style.background = 'var(--gp-surface-muted)'; }}
+                  onMouseLeave={(e) => { if (selectedIdx !== idx) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <span
+                    className="inline-flex items-center justify-center w-4 h-4 rounded-full flex-shrink-0"
+                    style={{
+                      background: sub.passed ? 'var(--gp-success-soft)' : 'var(--gp-danger-soft)',
+                      color: sub.passed ? 'var(--gp-success)' : 'var(--gp-danger)',
+                    }}
+                  >
+                    {sub.passed ? <Check size={9} strokeWidth={2.5} /> : <XCircle size={9} />}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[12px] gp-mono" style={{ color: 'var(--gp-ink-2)' }}>{formatDate(sub.created_at)}</span>
+                    <span className="block text-[10.5px]" style={{ color: sub.passed ? 'var(--gp-success)' : 'var(--gp-danger)' }}>
+                      {sub.passed ? 'Все тесты пройдены' : 'Тесты не пройдены'}
+                    </span>
+                  </span>
+                  {idx === 0 && (
+                    <span className="text-[9px] gp-mono px-1 rounded" style={{ background: 'var(--gp-ink)', color: 'var(--gp-bg)', flexShrink: 0 }}>
+                      LATEST
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function AIPanel({
+  loading, recommendation, mode, hint,
+}: { loading: boolean; recommendation: string; mode: 'solution' | 'error' | null; hint: string | null }) {
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <Loader2 size={18} className="animate-spin mx-auto mb-3" style={{ color: 'var(--gp-ink)' }} />
+        <div className="gp-eyebrow">{mode === 'error' ? 'Анализируем ошибки' : 'Анализируем решение'}</div>
+      </div>
+    );
+  }
+
+  if (recommendation) {
+    return (
+      <div
+        className="rounded-lg p-5"
+        style={{
+          background: 'var(--gp-surface)',
+          border: '1px solid var(--gp-border)',
+          boxShadow: 'var(--gp-shadow-xs)',
+        }}
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <span
+            className="inline-flex items-center justify-center w-6 h-6 rounded-md"
+            style={{
+              background: mode === 'error' ? 'var(--gp-danger-soft)' : 'var(--gp-accent-soft)',
+              color: mode === 'error' ? 'var(--gp-danger)' : 'var(--gp-accent)',
+            }}
+          >
+            {mode === 'error' ? <AlertCircle size={13} /> : <Sparkles size={13} />}
+          </span>
+          <span className="gp-eyebrow">
+            {mode === 'error' ? 'Разбор ошибок' : 'Разбор решения'}
+          </span>
+        </div>
+        <div className="gp-prose">
+          <MarkdownRenderer content={recommendation} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-center py-12 max-w-[360px] mx-auto">
+      <span
+        className="inline-flex items-center justify-center w-9 h-9 rounded-md mb-3"
+        style={{ background: 'var(--gp-surface-muted)', color: 'var(--gp-ink-3)' }}
+      >
+        <Sparkles size={15} />
+      </span>
+      <div className="gp-eyebrow">AI-разбор</div>
+      <p className="mt-2 text-[13px]" style={{ color: 'var(--gp-ink-3)', lineHeight: 1.5 }}>
+        {hint ?? 'После прогона тестов появится разбор кода или ошибок.'}
+      </p>
+    </div>
+  );
+}
+
+/* ------------- Skeleton ------------- */
+function EditorSkeleton() {
+  return (
+    <div className="flex flex-col h-[calc(100vh-60px)]" style={{ background: 'var(--gp-bg)' }}>
+      <div className="h-12 border-b" style={{ borderColor: 'var(--gp-border)', background: 'var(--gp-surface)' }} />
+      <div className="flex-1 grid grid-cols-2">
+        <div className="border-r p-8 space-y-3" style={{ borderColor: 'var(--gp-border)' }}>
+          <div className="h-4 w-24 gp-skel" />
+          <div className="h-7 w-3/4 gp-skel" />
+          <div className="h-3 w-full gp-skel mt-6" />
+          <div className="h-3 w-full gp-skel" />
+          <div className="h-3 w-2/3 gp-skel" />
+        </div>
+        <div className="grid grid-rows-[auto_1fr_auto_220px]">
+          <div className="h-10 border-b" style={{ borderColor: 'var(--gp-border)', background: 'var(--gp-surface)' }} />
+          <div className="gp-skel m-3" style={{ borderRadius: 8 }} />
+          <div className="h-12 border-t" style={{ borderColor: 'var(--gp-border)', background: 'var(--gp-surface)' }} />
+          <div className="border-t p-3 space-y-2" style={{ borderColor: 'var(--gp-border)' }}>
+            <div className="h-9 gp-skel" />
+            <div className="h-9 gp-skel" />
+            <div className="h-9 gp-skel" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

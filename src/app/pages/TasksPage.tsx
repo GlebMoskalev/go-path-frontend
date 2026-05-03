@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router';
-import { CheckCircle2, Circle, Search, SlidersHorizontal } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Search, Check, ArrowUpRight, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { fetchTaskChapters, type Difficulty, type TaskChapter } from '../api';
 import { DifficultyBadge } from '../components/DifficultyBadge';
-import { ProgressBar } from '../components/ProgressBar';
-import { AnimatedSection, StaggerContainer, StaggerItem } from '../components/AnimatedSection';
+import { Container, Eyebrow, ProgressTrack, staggerParent, staggerChild } from '../design';
 
-const difficultyFilters: { label: string; value: Difficulty | 'all' }[] = [
+const filters: { label: string; value: Difficulty | 'all' }[] = [
   { label: 'Все', value: 'all' },
   { label: 'Лёгкие', value: 'easy' },
   { label: 'Средние', value: 'medium' },
@@ -22,222 +21,317 @@ export function TasksPage() {
 
   useEffect(() => {
     fetchTaskChapters()
-      .then(setChapters)
+      .then((data) => setChapters([...data].sort((a, b) => a.order - b.order)))
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, []);
 
-  const filteredChapters = chapters.map((ch) => ({
-    ...ch,
-    tasks: ch.tasks.filter((t) => {
-      const matchesDiff = filter === 'all' || t.difficulty === filter;
-      const matchesSearch = search === '' ||
-        t.title.toLowerCase().includes(search.toLowerCase()) ||
-        t.description.toLowerCase().includes(search.toLowerCase());
-      return matchesDiff && matchesSearch;
-    }),
-  })).filter((ch) => ch.tasks.length > 0);
+  const filtered = useMemo(() => {
+    return chapters
+      .map((ch) => ({
+        ...ch,
+        tasks: ch.tasks.filter((t) => {
+          const matchesDiff = filter === 'all' || t.difficulty === filter;
+          const matchesSearch =
+            search === '' ||
+            t.title.toLowerCase().includes(search.toLowerCase()) ||
+            t.description.toLowerCase().includes(search.toLowerCase());
+          return matchesDiff && matchesSearch;
+        }),
+      }))
+      .filter((ch) => ch.tasks.length > 0);
+  }, [chapters, filter, search]);
 
-  if (isLoading) {
-    return (
-      <div style={{ background: 'var(--go-bg)', minHeight: 'calc(100vh - 56px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontSize: '14px', color: 'var(--go-muted)' }}>Загрузка...</div>
-      </div>
-    );
-  }
+  const totals = useMemo(() => {
+    let total = 0;
+    let solved = 0;
+    chapters.forEach((c) => {
+      total += c.tasks.length;
+      solved += c.solved_count ?? 0;
+    });
+    return { total, solved, ratio: total ? solved / total : 0 };
+  }, [chapters]);
 
   return (
-    <div style={{ background: 'var(--go-bg)', minHeight: 'calc(100vh - 56px)' }}>
-      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '40px 24px 80px' }}>
-        {/* Header */}
-        <AnimatedSection variant="fadeUp">
-          <div style={{ marginBottom: '32px' }}>
-            <h1 style={{ fontSize: '32px', fontWeight: 800, color: 'var(--go-text)', letterSpacing: '-0.03em', marginBottom: '8px' }}>
-              Задачи
-            </h1>
-            <p style={{ fontSize: '15px', color: 'var(--go-muted)' }}>
-              Практические задания с автоматической проверкой
-            </p>
-          </div>
-        </AnimatedSection>
-
-        {/* Filters */}
-        <AnimatedSection variant="fadeUp" delay={0.05}>
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '28px', flexWrap: 'wrap', alignItems: 'center' }}>
-            {/* Search */}
-            <div style={{ position: 'relative', flex: '1 1 240px', maxWidth: '320px' }}>
-              <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--go-muted)', pointerEvents: 'none' }} />
-              <input
-                type="text"
-                placeholder="Поиск задач..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px 8px 34px',
-                  background: 'var(--go-surface)',
-                  border: '1px solid var(--go-border)',
-                  borderRadius: '10px',
-                  color: 'var(--go-text-secondary)',
-                  fontSize: '13px',
-                  outline: 'none',
-                  fontFamily: 'Manrope, sans-serif',
-                  transition: 'border-color 0.2s ease',
-                }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--go-cyan)')}
-                onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--go-border)')}
-              />
+    <div style={{ background: 'var(--gp-bg)', minHeight: 'calc(100vh - 60px)' }}>
+      {/* Header */}
+      <header className="pt-14 pb-10" style={{ borderBottom: '1px solid var(--gp-border)' }}>
+        <Container>
+          <motion.div initial="hidden" animate="visible" variants={staggerParent(0.06)} className="grid md:grid-cols-12 gap-10 items-end">
+            <div className="md:col-span-7">
+              <motion.div variants={staggerChild}>
+                <Eyebrow>Раздел · 02</Eyebrow>
+              </motion.div>
+              <motion.h1 variants={staggerChild} className="gp-display mt-4" style={{ fontSize: 'clamp(36px, 5vw, 60px)' }}>
+                <em>Задачи</em> с проверкой
+                <br />
+                в редакторе.
+              </motion.h1>
+              <motion.p variants={staggerChild} className="mt-5 max-w-[58ch] text-[16px]" style={{ color: 'var(--gp-ink-3)' }}>
+                Пиши код, отправляй на тесты, читай AI-разбор. История решений сохраняется — возвращайся к любой попытке.
+              </motion.p>
             </div>
 
-            {/* Difficulty filter */}
-            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-              <SlidersHorizontal size={14} style={{ color: 'var(--go-muted)' }} />
-              {difficultyFilters.map((f) => {
-                const isActive = filter === f.value;
-                return (
-                  <motion.button
-                    key={f.value}
-                    onClick={() => setFilter(f.value)}
-                    animate={{
-                      borderColor: isActive ? 'var(--go-cyan)' : 'var(--go-border)',
-                      background: isActive ? 'var(--go-cyan-muted)' : 'transparent',
-                      color: isActive ? 'var(--go-cyan)' : 'var(--go-muted)',
-                      fontWeight: isActive ? 600 : 400,
-                    }}
-                    transition={{ duration: 0.25, ease: 'easeOut' }}
-                    style={{
-                      padding: '6px 14px',
-                      borderRadius: '20px',
-                      border: '1px solid',
-                      fontSize: '12px',
-                      cursor: 'pointer',
-                      fontFamily: 'Manrope, sans-serif',
-                    }}
-                  >
-                    {f.label}
-                  </motion.button>
-                );
-              })}
-            </div>
-          </div>
-        </AnimatedSection>
-
-        {/* Chapters */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {filteredChapters.length === 0 ? (
-            <AnimatedSection variant="fadeIn">
-              <div style={{ textAlign: 'center', padding: '80px 24px' }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
-                <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--go-text)', marginBottom: '8px' }}>
-                  Ничего не найдено
+            <motion.div variants={staggerChild} className="md:col-span-5">
+              <div className="gp-card p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <Eyebrow marker={false}>Прогресс</Eyebrow>
+                  <span className="text-[12px] gp-mono" style={{ color: 'var(--gp-ink-3)' }}>
+                    {isLoading ? '—' : `${totals.solved} из ${totals.total}`}
+                  </span>
                 </div>
-                <div style={{ fontSize: '14px', color: 'var(--go-muted)' }}>
-                  Попробуйте изменить фильтры или поисковый запрос
+                <ProgressTrack value={totals.ratio} tone={totals.ratio === 1 ? 'success' : 'ink'} height={3} />
+                <div className="mt-4 text-[12px]" style={{ color: 'var(--gp-ink-4)' }}>
+                  Все задачи проверяются автотестами и сохраняют историю.
                 </div>
               </div>
-            </AnimatedSection>
-          ) : (
-            <StaggerContainer key={`${filter}-${search}`} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {filteredChapters.map((chapter) => {
-                const solved = chapter.solved_count || 0;
-                const pct = chapter.tasks.length > 0 ? (solved / chapter.tasks.length) * 100 : 0;
+            </motion.div>
+          </motion.div>
+        </Container>
+      </header>
 
-                return (
-                  <StaggerItem key={chapter.slug}>
-                    <div
-                      style={{
-                        background: 'var(--go-surface)',
-                        border: '1px solid var(--go-border)',
-                        borderRadius: '14px',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {/* Chapter header */}
-                      <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--go-border)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', marginBottom: '12px' }}>
-                          <div>
-                            <div style={{ fontSize: '11px', color: 'var(--go-subtle)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>
-                              Раздел {chapter.order}
-                            </div>
-                            <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--go-text)', marginBottom: '4px', letterSpacing: '-0.01em' }}>
-                              {chapter.title}
-                            </h2>
-                            <p style={{ fontSize: '13px', color: 'var(--go-muted)' }}>{chapter.description}</p>
-                          </div>
-                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--go-cyan)', letterSpacing: '-0.02em' }}>
-                              {solved}/{chapter.tasks.length}
-                            </div>
-                            <div style={{ fontSize: '11px', color: 'var(--go-muted)' }}>решено</div>
-                          </div>
-                        </div>
-                        <ProgressBar
-                          value={pct}
-                          total={chapter.tasks.length}
-                          completed={solved}
-                          showLabel
-                          height={5}
-                        />
-                      </div>
+      {/* Sticky filter bar */}
+      <div
+        className="sticky z-30 backdrop-blur-md"
+        style={{
+          top: 60,
+          background: 'var(--gp-header-bg)',
+          borderBottom: '1px solid var(--gp-border)',
+        }}
+      >
+        <Container className="h-14 flex items-center gap-3 flex-wrap">
+          <SearchInput value={search} onChange={setSearch} />
 
-                      {/* Task list */}
-                      <div style={{ padding: '8px' }}>
-                        {chapter.tasks.map((task) => (
-                          <Link
-                            key={task.slug}
-                            to={`/tasks/${chapter.slug}/${task.slug}`}
-                            style={{ textDecoration: 'none' }}
-                          >
-                            <div
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                padding: '12px 16px',
-                                borderRadius: '10px',
-                                cursor: 'pointer',
-                                transition: 'background 0.15s ease',
-                              }}
-                              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--go-surface-2)')}
-                              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                            >
-                              {task.solved ? (
-                                <CheckCircle2 size={18} style={{ color: 'var(--go-green)', flexShrink: 0 }} />
-                              ) : (
-                                <Circle size={18} style={{ color: 'var(--go-border-2)', flexShrink: 0 }} />
-                              )}
+          <div className="flex items-center gap-1.5 ml-auto">
+            {filters.map((f) => (
+              <FilterChip key={f.value} active={filter === f.value} onClick={() => setFilter(f.value)}>
+                {f.label}
+              </FilterChip>
+            ))}
+          </div>
+        </Container>
+      </div>
 
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--go-text-secondary)', marginBottom: '2px' }}>
-                                  {task.title}
-                                </div>
-                                <div
-                                  style={{
-                                    fontSize: '12px',
-                                    color: 'var(--go-muted)',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap',
-                                    maxWidth: '500px',
-                                  }}
-                                >
-                                  {task.description.replace(/^#[^\n]+\n/, '').replace(/```[\s\S]*?```/g, '[код]').trim().slice(0, 100)}
-                                </div>
-                              </div>
+      {/* Body */}
+      <Container className="py-12">
+        {isLoading ? (
+          <ListSkeleton />
+        ) : filtered.length === 0 ? (
+          <EmptyState onClear={() => { setFilter('all'); setSearch(''); }} />
+        ) : (
+          <motion.div
+            key={`${filter}-${search}`}
+            initial="hidden"
+            animate="visible"
+            variants={staggerParent(0.05)}
+            className="grid gap-12"
+          >
+            {filtered.map((chapter, idx) => (
+              <ChapterBlock key={chapter.slug} chapter={chapter} idx={idx + 1} />
+            ))}
+          </motion.div>
+        )}
+      </Container>
+    </div>
+  );
+}
 
-                              <DifficultyBadge difficulty={task.difficulty} size="sm" />
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  </StaggerItem>
-                );
-              })}
-            </StaggerContainer>
-          )}
+/* ---------------- Filter UI ---------------- */
+function SearchInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="relative flex-1 min-w-[200px] max-w-[420px]">
+      <Search
+        size={14}
+        className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+        style={{ color: 'var(--gp-ink-4)' }}
+      />
+      <input
+        type="text"
+        placeholder="Поиск задачи..."
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full pl-9 pr-9 py-2 rounded-md text-[13px] outline-none transition-colors"
+        style={{
+          background: 'var(--gp-surface)',
+          border: '1px solid var(--gp-border)',
+          color: 'var(--gp-ink)',
+        }}
+        onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--gp-border-strong)')}
+        onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--gp-border)')}
+      />
+      {value && (
+        <button
+          onClick={() => onChange('')}
+          aria-label="Очистить"
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded"
+          style={{ color: 'var(--gp-ink-4)' }}
+        >
+          <X size={13} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className="px-3 py-1.5 rounded-full text-[12px] transition-colors"
+      style={{
+        background: active ? 'var(--gp-ink)' : 'transparent',
+        color: active ? 'var(--gp-bg)' : 'var(--gp-ink-3)',
+        border: '1px solid',
+        borderColor: active ? 'var(--gp-ink)' : 'var(--gp-border)',
+        fontWeight: active ? 500 : 400,
+      }}
+      onMouseEnter={(e) => {
+        if (!active) {
+          e.currentTarget.style.borderColor = 'var(--gp-border-strong)';
+          e.currentTarget.style.color = 'var(--gp-ink)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!active) {
+          e.currentTarget.style.borderColor = 'var(--gp-border)';
+          e.currentTarget.style.color = 'var(--gp-ink-3)';
+        }
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+/* ---------------- Chapter block ---------------- */
+function ChapterBlock({ chapter, idx }: { chapter: TaskChapter; idx: number }) {
+  const total = chapter.tasks.length;
+  const solved = chapter.solved_count ?? 0;
+  const ratio = total ? solved / total : 0;
+  const done = ratio === 1;
+
+  return (
+    <motion.section variants={staggerChild} className="grid md:grid-cols-12 gap-8 md:gap-10">
+      <div className="md:col-span-4">
+        <div className="md:sticky md:top-[140px]">
+          <div className="flex items-baseline gap-3">
+            <span className="text-[12px] gp-mono" style={{ color: 'var(--gp-ink-4)' }}>
+              {String(idx).padStart(2, '0')}
+            </span>
+            <span className="flex-1 gp-path-line-h h-px self-center mt-1" />
+            {done && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium" style={{ color: 'var(--gp-success)' }}>
+                <Check size={11} strokeWidth={2.5} /> Завершён
+              </span>
+            )}
+          </div>
+          <h2 className="mt-3 font-medium" style={{ fontSize: '22px', letterSpacing: '-0.02em', color: 'var(--gp-ink)', lineHeight: 1.2 }}>
+            {chapter.title}
+          </h2>
+          <p className="mt-2 text-[13.5px]" style={{ color: 'var(--gp-ink-3)', lineHeight: 1.55 }}>
+            {chapter.description}
+          </p>
+          <div className="mt-4">
+            <ProgressTrack value={ratio} tone={done ? 'success' : 'ink'} height={2} />
+            <div className="mt-2 text-[11px] gp-mono" style={{ color: 'var(--gp-ink-4)' }}>
+              {solved}/{total} решено
+            </div>
+          </div>
         </div>
       </div>
+
+      <ol className="md:col-span-8 list-none p-0 m-0" style={{ borderTop: '1px solid var(--gp-border)' }}>
+        {chapter.tasks.map((task, i) => (
+          <li key={task.slug} style={{ borderBottom: '1px solid var(--gp-border)' }}>
+            <Link
+              to={`/tasks/${chapter.slug}/${task.slug}`}
+              className="group flex items-center gap-4 py-4 no-underline"
+              style={{ color: 'var(--gp-ink)' }}
+            >
+              <span className="text-[11px] gp-mono w-7 flex-shrink-0" style={{ color: 'var(--gp-ink-4)' }}>
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <span className="flex-shrink-0">
+                {task.solved ? (
+                  <span
+                    className="inline-flex items-center justify-center w-5 h-5 rounded-full"
+                    style={{ background: 'var(--gp-success-soft)', color: 'var(--gp-success)' }}
+                  >
+                    <Check size={11} strokeWidth={2.5} />
+                  </span>
+                ) : (
+                  <span className="inline-block w-5 h-5 rounded-full border" style={{ borderColor: 'var(--gp-border-strong)' }} />
+                )}
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-[15.5px] font-medium leading-snug truncate group-hover:underline underline-offset-4" style={{ letterSpacing: '-0.005em' }}>
+                  {task.title}
+                </span>
+                <span className="block text-[13px] mt-0.5 truncate" style={{ color: 'var(--gp-ink-3)' }}>
+                  {task.description.replace(/^#[^\n]+\n/, '').replace(/```[\s\S]*?```/g, '[код]').trim().slice(0, 110)}
+                </span>
+              </span>
+              <DifficultyBadge difficulty={task.difficulty} variant="glyph" />
+              <ArrowUpRight size={14} style={{ color: 'var(--gp-ink-4)' }} className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+            </Link>
+          </li>
+        ))}
+      </ol>
+    </motion.section>
+  );
+}
+
+/* ---------------- States ---------------- */
+function EmptyState({ onClear }: { onClear: () => void }) {
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center py-20"
+      >
+        <Eyebrow marker={false}>Ничего не найдено</Eyebrow>
+        <h3 className="gp-display mt-3" style={{ fontSize: '32px' }}>
+          Пусто <em>в этой выборке</em>.
+        </h3>
+        <p className="mt-3 text-[14px]" style={{ color: 'var(--gp-ink-3)' }}>
+          Попробуй другой запрос или сбрось фильтры.
+        </p>
+        <button
+          onClick={onClear}
+          className="mt-6 text-[13px] underline underline-offset-4"
+          style={{ color: 'var(--gp-ink)' }}
+        >
+          Сбросить фильтры
+        </button>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+function ListSkeleton() {
+  return (
+    <div className="grid gap-12">
+      {[0, 1].map((i) => (
+        <div key={i} className="grid md:grid-cols-12 gap-10">
+          <div className="md:col-span-4 space-y-3">
+            <div className="h-3 w-10 gp-skel" />
+            <div className="h-6 w-3/4 gp-skel" />
+            <div className="h-3 w-full gp-skel" />
+            <div className="h-1 w-full gp-skel mt-4" />
+          </div>
+          <div className="md:col-span-8 space-y-3">
+            {[0, 1, 2, 3].map((j) => (
+              <div key={j} className="flex items-center gap-4 py-3">
+                <div className="h-3 w-6 gp-skel" />
+                <div className="h-5 w-5 rounded-full gp-skel" />
+                <div className="h-4 flex-1 gp-skel" />
+                <div className="h-3 w-16 gp-skel" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

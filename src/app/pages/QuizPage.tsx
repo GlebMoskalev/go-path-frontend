@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle2, XCircle, ChevronRight, BookOpen, Minus, Plus } from 'lucide-react';
+import { Check, X, ArrowRight, Minus, Plus } from 'lucide-react';
 import {
   fetchQuizChapters,
   fetchQuizQuestions,
@@ -10,14 +10,18 @@ import {
   type QuizAnswerResult,
 } from '../api';
 import { useAuth } from '../context/AuthContext';
-import { AnimatedSection } from '../components/AnimatedSection';
+import { useGopherMood } from '../context/GopherMoodContext';
 import { MarkdownRenderer, parseBold } from '../components/MarkdownRenderer';
-
+import { Button, Container, Eyebrow, ProgressRing, fadeUp, scaleIn, staggerParent, staggerChild } from '../design';
+import { dur, ease } from '../design/motion';
 
 type Phase = 'setup' | 'quiz' | 'result';
 
+interface AnswerRecord { questionId: string; chosen: number; correct: boolean; }
+
 export function QuizPage() {
   const { user, login } = useAuth();
+  const { setMood } = useGopherMood();
 
   const [chapters, setChapters] = useState<QuizChapterInfo[]>([]);
   const [selectedChapters, setSelectedChapters] = useState<string[]>([]);
@@ -29,7 +33,7 @@ export function QuizPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [answerResult, setAnswerResult] = useState<QuizAnswerResult | null>(null);
-  const [score, setScore] = useState(0);
+  const [history, setHistory] = useState<AnswerRecord[]>([]);
   const [phase, setPhase] = useState<Phase>('setup');
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
 
@@ -43,37 +47,23 @@ export function QuizPage() {
       .finally(() => setIsLoadingChapters(false));
   }, []);
 
-  const toggleChapter = (slug: string) => {
-    setSelectedChapters((prev) =>
-      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
-    );
-  };
-
-  const selectAll = () => {
-    setSelectedChapters(chapters.map((c) => c.slug));
-  };
-
-  const deselectAll = () => {
-    setSelectedChapters([]);
-  };
-
-  const totalQuestions = chapters
-    .filter((c) => selectedChapters.includes(c.slug))
-    .reduce((sum, c) => sum + c.question_count, 0);
+  const totalAvailable = useMemo(
+    () => chapters.filter((c) => selectedChapters.includes(c.slug)).reduce((s, c) => s + c.question_count, 0),
+    [chapters, selectedChapters]
+  );
 
   useEffect(() => {
-    if (totalQuestions > 0) {
-      setLimit(totalQuestions);
-    } else {
-      setLimit(10);
-    }
-  }, [totalQuestions]);
+    if (totalAvailable > 0) setLimit((prev) => Math.min(prev || 10, totalAvailable));
+    else setLimit(10);
+  }, [totalAvailable]);
 
-  const startQuiz = async () => {
-    if (!user) {
-      setShowAuthPrompt(true);
-      return;
-    }
+  const toggleChapter = (slug: string) =>
+    setSelectedChapters((prev) => (prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]));
+  const selectAll = () => setSelectedChapters(chapters.map((c) => c.slug));
+  const deselectAll = () => setSelectedChapters([]);
+
+  const startQuiz = useCallback(async () => {
+    if (!user) { setShowAuthPrompt(true); return; }
     setShowAuthPrompt(false);
     setIsLoadingQuestions(true);
     try {
@@ -81,272 +71,230 @@ export function QuizPage() {
         selectedChapters.length === chapters.length ? undefined : selectedChapters,
         limit > 0 ? limit : undefined
       );
-      if (qs.length === 0) return;
+      if (!qs.length) return;
       setQuestions(qs);
       setCurrentIndex(0);
       setSelectedAnswer(null);
       setAnswerResult(null);
-      setScore(0);
+      setHistory([]);
       setPhase('quiz');
     } catch (error) {
-      console.error('Error loading quiz questions:', error);
+      console.error('Quiz load error:', error);
     } finally {
       setIsLoadingQuestions(false);
     }
-  };
+  }, [user, selectedChapters, chapters.length, limit]);
 
   const currentQuestion = questions[currentIndex];
 
-  const handleAnswer = async (idx: number) => {
+  const handleAnswer = useCallback(async (idx: number) => {
     if (selectedAnswer !== null || !currentQuestion) return;
     setSelectedAnswer(idx);
     try {
       const result = await submitQuizAnswer(currentQuestion.id, idx);
       setAnswerResult(result);
-      if (result.correct) {
-        setScore((prev) => prev + 1);
-      }
+      setHistory((prev) => [...prev, { questionId: currentQuestion.id, chosen: idx, correct: result.correct }]);
+      setMood(result.correct ? 'happy' : 'sad');
     } catch (error) {
-      console.error('Answer submission error:', error);
+      console.error('Quiz submit error:', error);
     }
-  };
+  }, [selectedAnswer, currentQuestion, setMood]);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (currentIndex < questions.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+      setCurrentIndex((i) => i + 1);
       setSelectedAnswer(null);
       setAnswerResult(null);
     } else {
       setPhase('result');
     }
-  };
+  }, [currentIndex, questions.length]);
 
-  const getOptionStyle = (optionIdx: number): React.CSSProperties => {
-    const base: React.CSSProperties = {
-      padding: '14px 18px',
-      borderRadius: '12px',
-      border: '1px solid',
-      cursor: selectedAnswer !== null ? 'default' : 'pointer',
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: '12px',
-      transition: 'all 0.15s',
-      background: 'var(--go-surface)',
-      borderColor: 'var(--go-border)',
+  // Keyboard: 1–4 to choose, Enter to continue
+  useEffect(() => {
+    if (phase !== 'quiz') return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && selectedAnswer !== null) { e.preventDefault(); handleNext(); return; }
+      if (selectedAnswer !== null || !currentQuestion) return;
+      const idx = ['1', '2', '3', '4'].indexOf(e.key);
+      if (idx !== -1 && idx < currentQuestion.options.length) handleAnswer(idx);
     };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [phase, selectedAnswer, currentQuestion, handleAnswer, handleNext]);
 
-    if (!answerResult) return base;
-
-    if (optionIdx === answerResult.correct_answer) {
-      return { ...base, borderColor: 'var(--go-green)', background: 'var(--go-green-muted)' };
-    }
-    if (optionIdx === selectedAnswer && !answerResult.correct) {
-      return { ...base, borderColor: 'var(--go-red)', background: 'rgba(220, 38, 38, 0.08)' };
-    }
-    return { ...base, opacity: 0.5 };
-  };
-
-  const optionLetters = ['А', 'Б', 'В', 'Г'];
+  const score = history.filter((h) => h.correct).length;
 
   if (isLoadingChapters) {
     return (
-      <div style={{ background: 'var(--go-bg)', minHeight: 'calc(100vh - 56px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontSize: '14px', color: 'var(--go-muted)' }}>Загрузка...</div>
+      <div className="min-h-[calc(100vh-60px)]" style={{ background: 'var(--gp-bg)' }}>
+        <Container className="pt-14 space-y-3">
+          <div className="h-3 w-20 gp-skel" />
+          <div className="h-10 w-2/3 gp-skel" />
+          <div className="h-3 w-1/2 gp-skel" />
+        </Container>
       </div>
     );
   }
 
   if (phase === 'setup') {
     return (
-      <div style={{ background: 'var(--go-bg)', minHeight: 'calc(100vh - 56px)' }}>
-        <div style={{ maxWidth: '700px', margin: '0 auto', padding: '48px 24px 80px' }}>
-          <AnimatedSection variant="fadeUp">
-            <h1 style={{ fontSize: '32px', fontWeight: 800, color: 'var(--go-text)', letterSpacing: '-0.03em', marginBottom: '8px' }}>
-              Квизы
-            </h1>
-            <p style={{ fontSize: '15px', color: 'var(--go-muted)', marginBottom: '32px' }}>
-              Проверьте знания Go — выберите главы и начните
-            </p>
-          </AnimatedSection>
+      <SetupPhase
+        chapters={chapters}
+        selected={selectedChapters}
+        onToggle={toggleChapter}
+        onSelectAll={selectAll}
+        onDeselectAll={deselectAll}
+        limit={limit}
+        setLimit={setLimit}
+        totalAvailable={totalAvailable}
+        onStart={startQuiz}
+        loading={isLoadingQuestions}
+        showAuthPrompt={showAuthPrompt}
+        onLogin={login}
+        authed={!!user}
+      />
+    );
+  }
 
-          <AnimatedSection variant="fadeUp" delay={0.1}>
-            <div
-              style={{
-                background: 'var(--go-surface)',
-                border: '1px solid var(--go-border)',
-                borderRadius: '14px',
-                overflow: 'hidden',
-                marginBottom: '20px',
-              }}
-            >
-              <div
-                style={{
-                  padding: '16px 20px',
-                  borderBottom: '1px solid var(--go-border)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <BookOpen size={16} style={{ color: 'var(--go-cyan)' }} />
-                  <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--go-text)' }}>Выберите главы</span>
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={selectAll}
-                    style={{
-                      fontSize: '12px',
-                      color: 'var(--go-cyan)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontWeight: 600,
-                      fontFamily: 'Manrope, sans-serif',
-                    }}
-                  >
-                    Выбрать все
-                  </button>
-                  <span style={{ color: 'var(--go-border-2)' }}>|</span>
-                  <button
-                    onClick={deselectAll}
-                    style={{
-                      fontSize: '12px',
-                      color: 'var(--go-muted)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontWeight: 600,
-                      fontFamily: 'Manrope, sans-serif',
-                    }}
-                  >
-                    Снять все
-                  </button>
-                </div>
-              </div>
+  if (phase === 'result') {
+    return (
+      <ResultPhase
+        score={score}
+        total={questions.length}
+        history={history}
+        questions={questions}
+        chapters={chapters}
+        onRetry={() => startQuiz()}
+        onSetup={() => { setPhase('setup'); setQuestions([]); setHistory([]); }}
+      />
+    );
+  }
 
-              <div style={{ padding: '8px' }}>
-                {chapters.map((chapter) => {
-                  const isSelected = selectedChapters.includes(chapter.slug);
-                  return (
-                    <button
-                      key={chapter.slug}
-                      onClick={() => toggleChapter(chapter.slug)}
+  if (!currentQuestion) {
+    return (
+      <Container className="pt-20 text-center">
+        <Eyebrow marker={false}>Вопрос не найден</Eyebrow>
+      </Container>
+    );
+  }
+
+  return (
+    <QuizPhase
+      index={currentIndex}
+      total={questions.length}
+      question={currentQuestion}
+      selectedAnswer={selectedAnswer}
+      result={answerResult}
+      history={history}
+      onAnswer={handleAnswer}
+      onNext={handleNext}
+    />
+  );
+}
+
+/* =================== SETUP =================== */
+
+function SetupPhase({
+  chapters, selected, onToggle, onSelectAll, onDeselectAll,
+  limit, setLimit, totalAvailable, onStart, loading,
+  showAuthPrompt, onLogin, authed,
+}: {
+  chapters: QuizChapterInfo[];
+  selected: string[];
+  onToggle: (slug: string) => void;
+  onSelectAll: () => void;
+  onDeselectAll: () => void;
+  limit: number;
+  setLimit: (n: number) => void;
+  totalAvailable: number;
+  onStart: () => void;
+  loading: boolean;
+  showAuthPrompt: boolean;
+  onLogin: () => void;
+  authed: boolean;
+}) {
+  return (
+    <div className="min-h-[calc(100vh-60px)]" style={{ background: 'var(--gp-bg)' }}>
+      <header className="pt-14 pb-10" style={{ borderBottom: '1px solid var(--gp-border)' }}>
+        <Container>
+          <motion.div initial="hidden" animate="visible" variants={staggerParent(0.06)}>
+            <motion.div variants={staggerChild}>
+              <Eyebrow>Раздел · 03</Eyebrow>
+            </motion.div>
+            <motion.h1 variants={staggerChild} className="gp-display mt-4" style={{ fontSize: 'clamp(36px, 5vw, 60px)' }}>
+              Короткие <em>проверки</em>
+              <br />
+              знаний.
+            </motion.h1>
+            <motion.p variants={staggerChild} className="mt-5 max-w-[58ch] text-[16px]" style={{ color: 'var(--gp-ink-3)' }}>
+              Выбери разделы и количество вопросов. Мгновенная обратная связь после каждого ответа.
+              Управление с клавиатуры — <kbd className="gp-mono px-1.5 py-0.5 text-[11px] rounded" style={{ background: 'var(--gp-surface-muted)', border: '1px solid var(--gp-border)' }}>1</kbd>–<kbd className="gp-mono px-1.5 py-0.5 text-[11px] rounded" style={{ background: 'var(--gp-surface-muted)', border: '1px solid var(--gp-border)' }}>4</kbd> для ответа, <kbd className="gp-mono px-1.5 py-0.5 text-[11px] rounded" style={{ background: 'var(--gp-surface-muted)', border: '1px solid var(--gp-border)' }}>⏎</kbd> для перехода.
+            </motion.p>
+          </motion.div>
+        </Container>
+      </header>
+
+      <Container className="py-12 grid md:grid-cols-12 gap-10">
+        {/* Chapters */}
+        <div className="md:col-span-8">
+          <div className="flex items-center justify-between mb-4">
+            <Eyebrow marker={false}>Разделы</Eyebrow>
+            <div className="flex items-center gap-3 text-[12px]">
+              <button onClick={onSelectAll} className="hover:underline underline-offset-4" style={{ color: 'var(--gp-ink-2)' }}>Все</button>
+              <span style={{ color: 'var(--gp-ink-5)' }}>·</span>
+              <button onClick={onDeselectAll} className="hover:underline underline-offset-4" style={{ color: 'var(--gp-ink-3)' }}>Сбросить</button>
+            </div>
+          </div>
+
+          <ul className="list-none p-0 m-0" style={{ borderTop: '1px solid var(--gp-border)' }}>
+            {chapters.map((ch) => {
+              const checked = selected.includes(ch.slug);
+              return (
+                <li key={ch.slug} style={{ borderBottom: '1px solid var(--gp-border)' }}>
+                  <button
+                    onClick={() => onToggle(ch.slug)}
+                    className="w-full flex items-center gap-4 py-3.5 text-left transition-colors"
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--gp-surface-muted)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <span
+                      className="inline-flex items-center justify-center w-5 h-5 rounded flex-shrink-0 transition-colors"
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        width: '100%',
-                        padding: '12px 14px',
-                        borderRadius: '10px',
-                        background: isSelected ? 'var(--go-cyan-muted)' : 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        marginBottom: '2px',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isSelected) e.currentTarget.style.background = 'var(--go-surface-2)';
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isSelected) e.currentTarget.style.background = 'transparent';
+                        background: checked ? 'var(--gp-ink)' : 'transparent',
+                        border: `1.5px solid ${checked ? 'var(--gp-ink)' : 'var(--gp-border-strong)'}`,
+                        color: 'var(--gp-bg)',
                       }}
                     >
-                      <div
-                        style={{
-                          width: '20px',
-                          height: '20px',
-                          borderRadius: '5px',
-                          border: '2px solid',
-                          borderColor: isSelected ? 'var(--go-cyan)' : 'var(--go-border-2)',
-                          background: isSelected ? 'var(--go-cyan)' : 'transparent',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                          transition: 'all 0.15s',
-                        }}
-                      >
-                        {isSelected && (
-                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                            <path d="M3 6L5 8L9 4" stroke="var(--go-bg)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        )}
-                      </div>
+                      {checked && <Check size={11} strokeWidth={2.5} />}
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[15px] font-medium" style={{ color: 'var(--gp-ink)' }}>{ch.title}</span>
+                    </span>
+                    <span className="text-[12px] gp-mono" style={{ color: 'var(--gp-ink-4)' }}>
+                      {ch.question_count}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
 
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '14px', fontWeight: 600, color: isSelected ? 'var(--go-text)' : 'var(--go-muted)' }}>
-                          {chapter.title}
-                        </div>
-                      </div>
-
-                      <span
-                        style={{
-                          fontSize: '12px',
-                          color: isSelected ? 'var(--go-cyan)' : 'var(--go-subtle)',
-                          fontWeight: 600,
-                          background: isSelected ? 'var(--go-cyan-muted)' : 'var(--go-surface-2)',
-                          padding: '3px 10px',
-                          borderRadius: '14px',
-                        }}
-                      >
-                        {chapter.question_count} вопр.
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </AnimatedSection>
-
-          <AnimatedSection variant="fadeUp" delay={0.2}>
-            <div
-              style={{
-                background: 'var(--go-surface)',
-                border: '1px solid var(--go-border)',
-                borderRadius: '14px',
-                padding: '16px 20px',
-                marginBottom: '24px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '16px',
-              }}
-            >
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--go-text)', marginBottom: '4px' }}>
-                  Кол-во вопросов
-                </div>
-                <div style={{ fontSize: '12px', color: 'var(--go-muted)' }}>
-                  Доступно: {totalQuestions}
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        {/* Setup card */}
+        <aside className="md:col-span-4">
+          <div className="md:sticky md:top-[88px] grid gap-4">
+            <div className="gp-card p-5">
+              <Eyebrow marker={false}>Количество вопросов</Eyebrow>
+              <div className="mt-4 flex items-center justify-between gap-3">
                 <button
-                  onClick={() => setLimit((prev) => Math.max(1, prev - 1))}
+                  onClick={() => setLimit(Math.max(1, limit - 1))}
                   disabled={limit <= 1}
+                  className="w-9 h-9 inline-flex items-center justify-center rounded-md transition-colors"
                   style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--go-border-2)',
-                    background: 'var(--go-surface)',
-                    color: limit <= 1 ? 'var(--go-subtle)' : 'var(--go-muted)',
+                    background: 'var(--gp-surface-muted)',
+                    color: limit <= 1 ? 'var(--gp-ink-5)' : 'var(--gp-ink-2)',
                     cursor: limit <= 1 ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 0.15s',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (limit > 1) {
-                      e.currentTarget.style.borderColor = 'var(--go-cyan)';
-                      e.currentTarget.style.color = 'var(--go-cyan)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--go-border-2)';
-                    e.currentTarget.style.color = limit <= 1 ? 'var(--go-subtle)' : 'var(--go-muted)';
                   }}
                 >
                   <Minus size={14} />
@@ -357,457 +305,406 @@ export function QuizPage() {
                   value={limit}
                   onChange={(e) => {
                     const val = e.target.value.replace(/\D/g, '');
-                    if (val === '') {
-                      setLimit(1);
-                    } else {
-                      const num = parseInt(val, 10);
-                      const maxVal = totalQuestions > 0 ? totalQuestions : 100;
-                      setLimit(Math.min(Math.max(1, num), maxVal));
-                    }
+                    if (val === '') setLimit(1);
+                    else setLimit(Math.min(Math.max(1, parseInt(val, 10)), totalAvailable || 100));
                   }}
-                  style={{
-                    width: '56px',
-                    padding: '6px 8px',
-                    background: 'var(--go-surface)',
-                    border: '1px solid var(--go-border-2)',
-                    borderRadius: '8px',
-                    color: 'var(--go-text)',
-                    fontSize: '15px',
-                    fontWeight: 700,
-                    textAlign: 'center',
-                    outline: 'none',
-                    fontFamily: 'Manrope, sans-serif',
-                  }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--go-cyan)')}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--go-border-2)')}
+                  className="flex-1 text-center gp-mono text-[20px] outline-none bg-transparent"
+                  style={{ color: 'var(--gp-ink)' }}
                 />
                 <button
-                  onClick={() => {
-                    const maxVal = totalQuestions > 0 ? totalQuestions : 100;
-                    setLimit((prev) => Math.min(maxVal, prev + 1));
-                  }}
-                  disabled={totalQuestions > 0 && limit >= totalQuestions}
+                  onClick={() => setLimit(Math.min(totalAvailable || 100, limit + 1))}
+                  disabled={totalAvailable > 0 && limit >= totalAvailable}
+                  className="w-9 h-9 inline-flex items-center justify-center rounded-md transition-colors"
                   style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--go-border-2)',
-                    background: 'var(--go-surface)',
-                    color: totalQuestions > 0 && limit >= totalQuestions ? 'var(--go-subtle)' : 'var(--go-muted)',
-                    cursor: totalQuestions > 0 && limit >= totalQuestions ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 0.15s',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!(totalQuestions > 0 && limit >= totalQuestions)) {
-                      e.currentTarget.style.borderColor = 'var(--go-cyan)';
-                      e.currentTarget.style.color = 'var(--go-cyan)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--go-border-2)';
-                    e.currentTarget.style.color = totalQuestions > 0 && limit >= totalQuestions ? 'var(--go-subtle)' : 'var(--go-muted)';
+                    background: 'var(--gp-surface-muted)',
+                    color: totalAvailable > 0 && limit >= totalAvailable ? 'var(--gp-ink-5)' : 'var(--gp-ink-2)',
                   }}
                 >
                   <Plus size={14} />
                 </button>
               </div>
+              <div className="mt-3 text-[12px] gp-mono" style={{ color: 'var(--gp-ink-4)' }}>
+                Доступно {totalAvailable}
+              </div>
             </div>
 
-            <button
-              onClick={startQuiz}
-              disabled={selectedChapters.length === 0 || isLoadingQuestions}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '13px 28px',
-                borderRadius: '12px',
-                background: selectedChapters.length === 0 ? 'var(--go-border-2)' : 'var(--go-cyan)',
-                border: 'none',
-                color: selectedChapters.length === 0 ? 'var(--go-subtle)' : 'var(--go-bg)',
-                fontSize: '15px',
-                fontWeight: 700,
-                cursor: selectedChapters.length === 0 || isLoadingQuestions ? 'not-allowed' : 'pointer',
-                fontFamily: 'Manrope, sans-serif',
-              }}
-              onMouseEnter={(e) => {
-                if (selectedChapters.length > 0 && !isLoadingQuestions)
-                  e.currentTarget.style.background = 'var(--go-cyan-hover)';
-              }}
-              onMouseLeave={(e) => {
-                if (selectedChapters.length > 0 && !isLoadingQuestions)
-                  e.currentTarget.style.background = 'var(--go-cyan)';
-              }}
+            <Button
+              size="lg"
+              variant="primary"
+              onClick={onStart}
+              loading={loading}
+              disabled={selected.length === 0 || totalAvailable === 0}
+              iconRight={<ArrowRight size={14} />}
             >
-              {isLoadingQuestions ? 'Загрузка...' : 'Начать квиз'}
-              <ChevronRight size={16} />
-            </button>
+              Начать квиз
+            </Button>
 
-            {showAuthPrompt && !user && (
-              <motion.div
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                style={{
-                  marginTop: '16px',
-                  padding: '16px 20px',
-                  borderRadius: '12px',
-                  background: 'var(--go-surface)',
-                  border: '1px solid var(--go-border)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '16px',
-                  flexWrap: 'wrap',
-                }}
-              >
-                <div style={{ flex: 1, minWidth: '200px' }}>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--go-text)', marginBottom: '4px' }}>
-                    Требуется авторизация
-                  </div>
-                  <div style={{ fontSize: '13px', color: 'var(--go-muted)' }}>
-                    Войдите, чтобы начать квиз и отслеживать прогресс
-                  </div>
-                </div>
-                <button
-                  onClick={login}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '9px 20px',
-                    borderRadius: '10px',
-                    background: 'var(--go-cyan)',
-                    border: 'none',
-                    color: 'var(--go-bg)',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    fontFamily: 'Manrope, sans-serif',
-                    whiteSpace: 'nowrap',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--go-cyan-hover)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--go-cyan)')}
-                >
-                  Войти через Google
-                </button>
-              </motion.div>
+            {!authed && (
+              <AnimatePresence>
+                {showAuthPrompt && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    className="p-4 rounded-lg"
+                    style={{ background: 'var(--gp-surface)', border: '1px solid var(--gp-border)' }}
+                  >
+                    <div className="text-[13px] font-medium" style={{ color: 'var(--gp-ink)' }}>Нужна авторизация</div>
+                    <div className="text-[12.5px] mt-1" style={{ color: 'var(--gp-ink-3)' }}>
+                      Войди через Google, чтобы пройти квиз и сохранить прогресс.
+                    </div>
+                    <Button size="sm" variant="primary" className="mt-3" onClick={onLogin}>
+                      Войти через Google
+                    </Button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             )}
-          </AnimatedSection>
-        </div>
-      </div>
-    );
-  }
+          </div>
+        </aside>
+      </Container>
+    </div>
+  );
+}
 
-  if (phase === 'result') {
-    const pct = questions.length > 0 ? Math.round((score / questions.length) * 100) : 0;
-    return (
-      <div style={{ background: 'var(--go-bg)', minHeight: 'calc(100vh - 56px)' }}>
-        <div style={{ maxWidth: '600px', margin: '0 auto', padding: '60px 24px', textAlign: 'center' }}>
-          <AnimatedSection variant="scaleIn">
-            <div style={{ fontSize: '64px', marginBottom: '16px' }}>
-              {pct >= 80 ? '🎉' : pct >= 50 ? '👍' : '📚'}
-            </div>
-            <h1 style={{ fontSize: '32px', fontWeight: 800, color: 'var(--go-text)', letterSpacing: '-0.03em', marginBottom: '12px' }}>
-              Квиз завершён!
-            </h1>
-          </AnimatedSection>
+/* =================== QUIZ =================== */
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-            style={{
-              background: 'var(--go-surface)',
-              border: '1px solid var(--go-border)',
-              borderRadius: '14px',
-              padding: '32px',
-              marginBottom: '32px',
-              marginTop: '24px',
-            }}
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
-              style={{ fontSize: '48px', fontWeight: 800, color: 'var(--go-cyan)', letterSpacing: '-0.03em', marginBottom: '8px' }}
-            >
-              {score} / {questions.length}
-            </motion.div>
-            <div style={{ fontSize: '16px', color: 'var(--go-muted)', marginBottom: '16px' }}>
-              {pct}% правильных ответов
-            </div>
-            <div
-              style={{
-                height: '6px',
-                background: 'var(--go-surface-2)',
-                borderRadius: '3px',
-                overflow: 'hidden',
-                maxWidth: '300px',
-                margin: '0 auto',
-              }}
-            >
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${pct}%` }}
-                transition={{ duration: 0.8, delay: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-                style={{
-                  height: '100%',
-                  background: pct >= 80 ? 'var(--go-green)' : pct >= 50 ? 'var(--go-amber)' : 'var(--go-red)',
-                  borderRadius: '3px',
-                }}
-              />
-            </div>
-          </motion.div>
+const LETTERS = ['1', '2', '3', '4'];
 
-          <AnimatedSection variant="fadeUp" delay={0.5}>
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => {
-                  setPhase('setup');
-                  setQuestions([]);
-                  setScore(0);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '12px 24px',
-                  borderRadius: '12px',
-                  background: 'transparent',
-                  border: '1px solid var(--go-border-2)',
-                  color: 'var(--go-muted)',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  fontFamily: 'Manrope, sans-serif',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--go-cyan)';
-                  e.currentTarget.style.color = 'var(--go-text)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--go-border-2)';
-                  e.currentTarget.style.color = 'var(--go-muted)';
-                }}
-              >
-                Выбрать главы
-              </button>
-              <button
-                onClick={startQuiz}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '12px 24px',
-                  borderRadius: '12px',
-                  background: 'var(--go-cyan)',
-                  border: 'none',
-                  color: 'var(--go-bg)',
-                  fontSize: '14px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  fontFamily: 'Manrope, sans-serif',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--go-cyan-hover)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--go-cyan)')}
-              >
-                Пройти снова
-                <ChevronRight size={14} />
-              </button>
-            </div>
-          </AnimatedSection>
-        </div>
-      </div>
-    );
-  }
+function QuizPhase({
+  index, total, question, selectedAnswer, result, history, onAnswer, onNext,
+}: {
+  index: number; total: number; question: QuizQuestion;
+  selectedAnswer: number | null;
+  result: QuizAnswerResult | null;
+  history: AnswerRecord[];
+  onAnswer: (idx: number) => void;
+  onNext: () => void;
+}) {
+  const actionBarRef = useRef<HTMLDivElement>(null);
 
-  if (!currentQuestion) {
-    return (
-      <div style={{ background: 'var(--go-bg)', minHeight: 'calc(100vh - 56px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontSize: '14px', color: 'var(--go-muted)' }}>Вопрос не найден</div>
-      </div>
-    );
-  }
+  // Auto-scroll explanation + "Continue" button into view after answering
+  useEffect(() => {
+    if (selectedAnswer === null) return;
+    const el = actionBarRef.current;
+    if (!el) return;
+    // small delay so the entry animation has started and layout is stable
+    const t = setTimeout(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 60);
+    return () => clearTimeout(t);
+  }, [selectedAnswer, result]);
 
   return (
-    <div style={{ background: 'var(--go-bg)', minHeight: 'calc(100vh - 56px)' }}>
-      <div style={{ maxWidth: '760px', margin: '0 auto', padding: '40px 24px 80px' }}>
-        <div style={{ marginBottom: '28px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span style={{ fontSize: '13px', color: 'var(--go-muted)' }}>
-              Вопрос {currentIndex + 1} из {questions.length}
-            </span>
-            <span style={{ fontSize: '13px', color: 'var(--go-muted)' }}>
-              {currentQuestion.chapter_slug}
-            </span>
+    <div className="min-h-[calc(100vh-60px)]" style={{ background: 'var(--gp-bg)' }}>
+      {/* Progress dots */}
+      <div className="sticky z-30 backdrop-blur-md" style={{ top: 60, background: 'var(--gp-header-bg)', borderBottom: '1px solid var(--gp-border)' }}>
+        <Container className="h-12 flex items-center gap-3">
+          <span className="text-[11px] gp-mono flex-shrink-0" style={{ color: 'var(--gp-ink-4)' }}>
+            {String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
+          </span>
+          <div className="flex items-center gap-[3px] flex-1 min-w-0 overflow-x-auto">
+            {Array.from({ length: total }).map((_, i) => {
+              const past = history[i];
+              const isCurrent = i === index;
+              return (
+                <span
+                  key={i}
+                  aria-hidden
+                  className="h-[3px] rounded-full flex-1 max-w-[28px] min-w-[6px] transition-colors"
+                  style={{
+                    background:
+                      past?.correct ? 'var(--gp-success)' :
+                      past && !past.correct ? 'var(--gp-danger)' :
+                      isCurrent ? 'var(--gp-ink)' : 'var(--gp-surface-strong)',
+                    opacity: isCurrent || past ? 1 : 0.7,
+                  }}
+                />
+              );
+            })}
           </div>
-          <div style={{ width: '100%', height: '4px', background: 'var(--go-surface-2)', borderRadius: '4px', overflow: 'hidden' }}>
-            <div
-              style={{
-                height: '100%',
-                background: 'var(--go-cyan)',
-                borderRadius: '4px',
-                width: `${((currentIndex + 1) / questions.length) * 100}%`,
-                transition: 'width 0.3s ease',
-              }}
-            />
-          </div>
-        </div>
+          <span className="text-[11px] gp-mono flex-shrink-0" style={{ color: 'var(--gp-ink-4)' }}>
+            {history.filter((h) => h.correct).length} ✓
+          </span>
+        </Container>
+      </div>
 
+      <Container className="pt-12 pb-24 max-w-[760px]">
         <AnimatePresence mode="wait">
           <motion.div
-            key={currentIndex}
-            initial={{ opacity: 0, y: 8 }}
+            key={index}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: dur.slow, ease: ease.emphasized }}
           >
-            <div
-              style={{
-                background: 'var(--go-surface)',
-                border: '1px solid var(--go-border)',
-                borderRadius: '14px',
-                overflow: 'hidden',
-                marginBottom: '20px',
-              }}
-            >
-              <div style={{ padding: '28px' }}>
-                <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--go-text)', lineHeight: '1.5' }}>
-                  <MarkdownRenderer 
-                    content={currentQuestion.question} 
-                    textStyle={{ fontSize: '18px', fontWeight: 700, color: 'var(--go-text)', lineHeight: '1.5', margin: 0 }} 
-                  />
-                </div>
-              </div>
+            <Eyebrow>Вопрос {index + 1}</Eyebrow>
+            <div className="mt-3 text-[22px] md:text-[26px] font-medium" style={{ color: 'var(--gp-ink)', letterSpacing: '-0.015em', lineHeight: 1.3 }}>
+              <MarkdownRenderer
+                content={question.question}
+                textStyle={{ fontSize: 'inherit', fontWeight: 'inherit', color: 'inherit', lineHeight: 'inherit', margin: 0 }}
+              />
+            </div>
 
-              <div style={{ padding: '0 28px 28px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {currentQuestion.options.map((option, idx) => (
+            <div className="mt-8 grid gap-2.5">
+              {question.options.map((option, idx) => {
+                const isChosen = selectedAnswer === idx;
+                const isCorrect = result?.correct_answer === idx;
+                const isWrongChoice = result && isChosen && !result.correct;
+                const dim = result && !isCorrect && !isChosen;
+                return (
                   <motion.button
                     key={idx}
-                    onClick={() => handleAnswer(idx)}
+                    onClick={() => onAnswer(idx)}
                     disabled={selectedAnswer !== null}
-                    style={getOptionStyle(idx)}
-                    whileHover={selectedAnswer === null ? { scale: 1.01 } : undefined}
-                    whileTap={selectedAnswer === null ? { scale: 0.99 } : undefined}
+                    whileHover={selectedAnswer === null ? { y: -1 } : undefined}
+                    whileTap={selectedAnswer === null ? { y: 0 } : undefined}
+                    transition={{ duration: dur.fast }}
+                    className="text-left flex items-start gap-4 px-5 py-4 rounded-lg transition-colors"
+                    style={{
+                      background:
+                        isCorrect && result ? 'var(--gp-success-soft)' :
+                        isWrongChoice ? 'var(--gp-danger-soft)' :
+                        'var(--gp-surface)',
+                      border: '1px solid',
+                      borderColor:
+                        isCorrect && result ? 'var(--gp-success)' :
+                        isWrongChoice ? 'var(--gp-danger)' :
+                        'var(--gp-border)',
+                      opacity: dim ? 0.55 : 1,
+                      cursor: selectedAnswer !== null ? 'default' : 'pointer',
+                    }}
                     onMouseEnter={(e) => {
-                      if (selectedAnswer === null) {
-                        (e.currentTarget as HTMLElement).style.borderColor = 'var(--go-border-2)';
-                        (e.currentTarget as HTMLElement).style.background = 'var(--go-surface-2)';
-                      }
+                      if (selectedAnswer === null) e.currentTarget.style.borderColor = 'var(--gp-border-strong)';
                     }}
                     onMouseLeave={(e) => {
-                      if (selectedAnswer === null) {
-                        (e.currentTarget as HTMLElement).style.borderColor = 'var(--go-border)';
-                        (e.currentTarget as HTMLElement).style.background = 'var(--go-surface)';
-                      }
+                      if (selectedAnswer === null) e.currentTarget.style.borderColor = 'var(--gp-border)';
                     }}
                   >
                     <span
+                      className="inline-flex items-center justify-center w-7 h-7 rounded gp-mono text-[12px] flex-shrink-0"
                       style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '6px',
+                        background:
+                          isCorrect && result ? 'var(--gp-success)' :
+                          isWrongChoice ? 'var(--gp-danger)' :
+                          'var(--gp-surface-muted)',
+                        color:
+                          isCorrect && result ? '#fff' :
+                          isWrongChoice ? '#fff' :
+                          'var(--gp-ink-2)',
                         border: '1px solid',
-                        borderColor: answerResult
-                          ? idx === answerResult.correct_answer ? 'var(--go-green)'
-                          : idx === selectedAnswer ? 'var(--go-red)' : 'var(--go-border-2)'
-                          : 'var(--go-border-2)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '13px',
-                        fontWeight: 700,
-                        color: answerResult
-                          ? idx === answerResult.correct_answer ? 'var(--go-green)'
-                          : idx === selectedAnswer ? 'var(--go-red)' : 'var(--go-muted)'
-                          : 'var(--go-muted)',
-                        flexShrink: 0,
-                        background: answerResult
-                          ? idx === answerResult.correct_answer ? 'var(--go-green-muted)'
-                          : idx === selectedAnswer ? 'rgba(220, 38, 38, 0.08)' : 'transparent'
-                          : 'transparent',
+                        borderColor:
+                          isCorrect && result ? 'var(--gp-success)' :
+                          isWrongChoice ? 'var(--gp-danger)' :
+                          'var(--gp-border)',
                       }}
                     >
-                      {answerResult && idx === answerResult.correct_answer ? (
-                        <CheckCircle2 size={14} style={{ color: 'var(--go-green)' }} />
-                      ) : answerResult && idx === selectedAnswer && !answerResult.correct ? (
-                        <XCircle size={14} style={{ color: 'var(--go-red)' }} />
-                      ) : (
-                        optionLetters[idx]
-                      )}
+                      {result && isCorrect ? <Check size={12} strokeWidth={2.5} /> :
+                        isWrongChoice ? <X size={12} strokeWidth={2.5} /> :
+                        LETTERS[idx]}
                     </span>
-                    <span style={{ fontSize: '14px', color: 'var(--go-text-secondary)', textAlign: 'left', fontFamily: 'Manrope, sans-serif', lineHeight: '1.5' }}>
+                    <span className="text-[15px]" style={{ color: 'var(--gp-ink)', lineHeight: 1.55 }}>
                       {parseBold(option)}
                     </span>
                   </motion.button>
-                ))}
-              </div>
+                );
+              })}
             </div>
 
-            {answerResult && (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25 }}
-                style={{
-                  padding: '20px',
-                  borderRadius: '12px',
-                  border: `1px solid ${answerResult.correct ? 'var(--go-green-muted)' : 'rgba(220, 38, 38, 0.08)'}`,
-                  background: answerResult.correct ? 'var(--go-green-muted)' : 'rgba(220, 38, 38, 0.08)',
-                  marginBottom: '20px',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  {answerResult.correct ? (
-                    <CheckCircle2 size={16} style={{ color: 'var(--go-green)' }} />
-                  ) : (
-                    <XCircle size={16} style={{ color: 'var(--go-red)' }} />
-                  )}
-                  <span style={{ fontSize: '14px', fontWeight: 700, color: answerResult.correct ? 'var(--go-green)' : 'var(--go-red)' }}>
-                    {answerResult.correct ? 'Правильно!' : 'Неправильно'}
-                  </span>
-                </div>
-                <div style={{ fontSize: '14px', color: 'var(--go-text-secondary)', lineHeight: '1.65', margin: 0 }}>
-                  <MarkdownRenderer 
-                    content={answerResult.explanation} 
-                    textStyle={{ margin: 0 }} 
-                  />
-                </div>
-              </motion.div>
-            )}
+            {/* Explanation */}
+            <AnimatePresence>
+              {result && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: dur.base, ease: ease.emphasized }}
+                  className="mt-6 rounded-lg p-5"
+                  style={{
+                    background: 'var(--gp-surface)',
+                    border: '1px solid var(--gp-border)',
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <span
+                      className="inline-flex items-center justify-center w-5 h-5 rounded-full flex-shrink-0"
+                      style={{
+                        background: result.correct ? 'var(--gp-success-soft)' : 'var(--gp-danger-soft)',
+                        color: result.correct ? 'var(--gp-success)' : 'var(--gp-danger)',
+                      }}
+                    >
+                      {result.correct ? <Check size={11} strokeWidth={2.5} /> : <X size={11} strokeWidth={2.5} />}
+                    </span>
+                    <span className="text-[13px] font-medium" style={{ color: result.correct ? 'var(--gp-success)' : 'var(--gp-danger)' }}>
+                      {result.correct ? 'Верно' : 'Не верно'}
+                    </span>
+                  </div>
+                  <div className="gp-prose text-[14px]" style={{ color: 'var(--gp-ink-2)', lineHeight: 1.65 }}>
+                    <MarkdownRenderer content={result.explanation} textStyle={{ margin: 0 }} />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {selectedAnswer !== null && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button
-                  onClick={handleNext}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '11px 24px',
-                    borderRadius: '10px',
-                    background: 'var(--go-cyan)',
-                    border: 'none',
-                    color: 'var(--go-bg)',
-                    fontSize: '14px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    fontFamily: 'Manrope, sans-serif',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--go-cyan-hover)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--go-cyan)')}
-                >
-                  {currentIndex < questions.length - 1 ? 'Следующий вопрос' : 'Завершить'}
-                  <ChevronRight size={14} />
-                </button>
+              <div ref={actionBarRef} className="mt-8 flex justify-end items-center gap-3">
+                <span className="text-[12px]" style={{ color: 'var(--gp-ink-4)' }}>
+                  <kbd className="gp-mono px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'var(--gp-surface-muted)', border: '1px solid var(--gp-border)' }}>⏎</kbd> чтобы продолжить
+                </span>
+                <Button variant="primary" onClick={onNext} iconRight={<ArrowRight size={13} />}>
+                  {index < total - 1 ? 'Дальше' : 'Завершить'}
+                </Button>
               </div>
             )}
           </motion.div>
         </AnimatePresence>
-      </div>
+      </Container>
+    </div>
+  );
+}
+
+/* =================== RESULT =================== */
+
+function ResultPhase({
+  score, total, history, questions, chapters, onRetry, onSetup,
+}: {
+  score: number;
+  total: number;
+  history: AnswerRecord[];
+  questions: QuizQuestion[];
+  chapters: QuizChapterInfo[];
+  onRetry: () => void;
+  onSetup: () => void;
+}) {
+  const ratio = total > 0 ? score / total : 0;
+  const [hoveredDot, setHoveredDot] = useState<number | null>(null);
+
+  const questionChapterMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    questions.forEach((q) => {
+      const chapter = chapters.find((c) => c.slug === q.chapter_slug);
+      map[q.id] = chapter?.title ?? q.chapter_slug;
+    });
+    return map;
+  }, [questions, chapters]);
+  const verdict =
+    ratio >= 0.85 ? 'Отлично' :
+    ratio >= 0.6 ? 'Хорошо' :
+    ratio >= 0.3 ? 'Пробуй ещё' :
+    'Стоит вернуться к теории';
+
+  return (
+    <div className="min-h-[calc(100vh-60px)]" style={{ background: 'var(--gp-bg)' }}>
+      <Container className="pt-20 pb-24 max-w-[560px]">
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={staggerParent(0.06)}
+          className="flex flex-col items-center text-center"
+        >
+          {/* Eyebrow */}
+          <motion.div variants={staggerChild}>
+            <Eyebrow>Квиз завершён</Eyebrow>
+          </motion.div>
+
+          {/* Progress ring */}
+          <motion.div variants={scaleIn} className="mt-10">
+            <ProgressRing
+              value={ratio}
+              size={160}
+              stroke={7}
+              tone={ratio >= 0.6 ? 'success' : 'ink'}
+            >
+              <span className="text-center">
+                <span className="block gp-display" style={{ fontSize: 40, lineHeight: 1, color: 'var(--gp-ink)' }}>
+                  {score}
+                </span>
+                <span className="block text-[12px] gp-mono mt-1" style={{ color: 'var(--gp-ink-4)' }}>
+                  из {total}
+                </span>
+              </span>
+            </ProgressRing>
+          </motion.div>
+
+          {/* Verdict */}
+          <motion.h1 variants={staggerChild} className="gp-display mt-6" style={{ fontSize: 'clamp(36px, 5vw, 56px)' }}>
+            <em>{verdict}.</em>
+          </motion.h1>
+
+          {/* Stat cards */}
+          <motion.div variants={fadeUp} className="mt-8 w-full grid grid-cols-3 gap-3">
+            {[
+              { label: 'Точность', value: `${Math.round(ratio * 100)}%`, color: ratio >= 0.6 ? 'var(--gp-success)' : 'var(--gp-danger)' },
+              { label: 'Верно', value: String(score), color: 'var(--gp-ink)' },
+              { label: 'Ошибки', value: String(total - score), color: total - score > 0 ? 'var(--gp-danger)' : 'var(--gp-ink-4)' },
+            ].map(({ label, value, color }) => (
+              <div
+                key={label}
+                className="rounded-lg py-4 px-3"
+                style={{ background: 'var(--gp-surface)', border: '1px solid var(--gp-border)' }}
+              >
+                <div className="gp-eyebrow">{label}</div>
+                <div className="gp-display mt-2" style={{ fontSize: 28, color }}>{value}</div>
+              </div>
+            ))}
+          </motion.div>
+
+          {/* Per-question dots */}
+          <motion.div variants={fadeUp} className="mt-8 w-full">
+            <div className="gp-eyebrow mb-3">Ход квиза</div>
+            <div className="flex items-center gap-1.5 flex-wrap justify-center">
+              {history.map((h, i) => (
+                <span
+                  key={i}
+                  onMouseEnter={() => setHoveredDot(i)}
+                  onMouseLeave={() => setHoveredDot(null)}
+                  style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <span
+                    className="inline-block w-3 h-3 rounded-full"
+                    style={{
+                      background: h.correct ? 'var(--gp-success)' : 'var(--gp-danger)',
+                      opacity: h.correct ? 1 : 0.85,
+                      transform: hoveredDot === i ? 'scale(1.4)' : 'scale(1)',
+                      transition: 'transform 0.12s ease',
+                    }}
+                  />
+                  {hoveredDot === i && questionChapterMap[h.questionId] && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        bottom: 'calc(100% + 7px)',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        whiteSpace: 'nowrap',
+                        fontSize: '11px',
+                        padding: '3px 8px',
+                        borderRadius: '5px',
+                        background: 'var(--gp-ink)',
+                        color: 'var(--gp-bg)',
+                        pointerEvents: 'none',
+                        zIndex: 10,
+                      }}
+                    >
+                      {questionChapterMap[h.questionId]}
+                    </span>
+                  )}
+                </span>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Actions */}
+          <motion.div variants={fadeUp} className="mt-10 flex items-center gap-3 flex-wrap justify-center">
+            <Button variant="primary" size="lg" onClick={onRetry} iconRight={<ArrowRight size={14} />}>
+              Пройти ещё раз
+            </Button>
+            <Button variant="ghost" size="lg" onClick={onSetup}>
+              Изменить разделы
+            </Button>
+          </motion.div>
+        </motion.div>
+      </Container>
     </div>
   );
 }

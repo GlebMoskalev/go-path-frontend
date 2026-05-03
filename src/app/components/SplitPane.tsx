@@ -63,35 +63,55 @@ export function SplitPane({
 
   const gutterStyle: React.CSSProperties = isHorizontal
     ? {
-        width: '5px',
+        width: '1px',
         cursor: 'col-resize',
-        background: 'var(--go-border)',
+        background: 'var(--gp-border)',
         flexShrink: 0,
         position: 'relative',
         zIndex: 2,
-        transition: 'background 0.15s',
+        transition: 'background 0.15s ease',
       }
     : {
-        height: '5px',
+        height: '1px',
         cursor: 'row-resize',
-        background: 'var(--go-border)',
+        background: 'var(--gp-border)',
         flexShrink: 0,
         position: 'relative',
         zIndex: 2,
-        transition: 'background 0.15s',
+        transition: 'background 0.15s ease',
       };
 
+  // Generous hit area centered on the visible 1px line
   const gutterHoverIndicator: React.CSSProperties = isHorizontal
+    ? {
+        position: 'absolute',
+        top: 0,
+        left: '-5px',
+        bottom: 0,
+        width: '11px',
+      }
+    : {
+        position: 'absolute',
+        left: 0,
+        top: '-5px',
+        right: 0,
+        height: '11px',
+      };
+
+  // The visible "grip" pill that shows on hover
+  const gripStyle: React.CSSProperties = isHorizontal
     ? {
         position: 'absolute',
         top: '50%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
         width: '3px',
-        height: '32px',
+        height: '28px',
         borderRadius: '2px',
-        background: 'var(--go-subtle)',
-        opacity: 0.5,
+        background: 'var(--gp-ink-4)',
+        opacity: 0,
+        transition: 'opacity 0.15s ease',
+        pointerEvents: 'none',
       }
     : {
         position: 'absolute',
@@ -99,10 +119,12 @@ export function SplitPane({
         left: '50%',
         transform: 'translate(-50%, -50%)',
         height: '3px',
-        width: '32px',
+        width: '28px',
         borderRadius: '2px',
-        background: 'var(--go-subtle)',
-        opacity: 0.5,
+        background: 'var(--gp-ink-4)',
+        opacity: 0,
+        transition: 'opacity 0.15s ease',
+        pointerEvents: 'none',
       };
 
   return (
@@ -132,17 +154,18 @@ export function SplitPane({
         onMouseDown={handleMouseDown}
         style={gutterStyle}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'var(--go-cyan)';
-          const dot = e.currentTarget.firstElementChild as HTMLElement;
-          if (dot) dot.style.opacity = '0';
+          e.currentTarget.style.background = 'var(--gp-border-strong)';
+          const grip = e.currentTarget.querySelector('[data-grip]') as HTMLElement | null;
+          if (grip) grip.style.opacity = '0.6';
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'var(--go-border)';
-          const dot = e.currentTarget.firstElementChild as HTMLElement;
-          if (dot) dot.style.opacity = '0.5';
+          e.currentTarget.style.background = 'var(--gp-border)';
+          const grip = e.currentTarget.querySelector('[data-grip]') as HTMLElement | null;
+          if (grip) grip.style.opacity = '0';
         }}
       >
         <div style={gutterHoverIndicator} />
+        <div data-grip style={gripStyle} />
       </div>
 
       <div

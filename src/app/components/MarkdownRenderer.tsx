@@ -13,13 +13,13 @@ function parseInlineCode(text: string, keyPrefix: string): React.ReactNode[] {
       <code
         key={`${keyPrefix}c${i}`}
         style={{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '0.88em',
-          background: 'var(--go-surface-2)',
-          border: '1px solid var(--go-border)',
-          borderRadius: '5px',
+          fontFamily: "var(--gp-font-mono)",
+          fontSize: '0.86em',
+          background: 'var(--gp-surface-muted)',
+          border: '1px solid var(--gp-border)',
+          borderRadius: '4px',
           padding: '1px 6px',
-          color: 'var(--go-cyan)',
+          color: 'var(--gp-ink)',
         }}
       >
         {part}
@@ -75,7 +75,7 @@ export function MarkdownRenderer({ content, textStyle }: MarkdownRendererProps) 
 
     if (line.startsWith('# ')) {
       elements.push(
-        <h1 key={i} style={{ fontSize: '28px', fontWeight: 800, color: 'var(--go-text)', marginTop: '8px', marginBottom: '16px', letterSpacing: '-0.02em' }}>
+        <h1 key={i} style={{ fontSize: '26px', fontWeight: 600, color: 'var(--gp-ink)', marginTop: '10px', marginBottom: '14px', letterSpacing: '-0.025em', lineHeight: 1.2 }}>
           {parseBold(line.slice(2))}
         </h1>
       );
@@ -85,7 +85,7 @@ export function MarkdownRenderer({ content, textStyle }: MarkdownRendererProps) 
 
     if (line.startsWith('## ')) {
       elements.push(
-        <h2 key={i} style={{ fontSize: '20px', fontWeight: 700, color: 'var(--go-text)', marginTop: '28px', marginBottom: '10px', letterSpacing: '-0.01em' }}>
+        <h2 key={i} style={{ fontSize: '19px', fontWeight: 600, color: 'var(--gp-ink)', marginTop: '28px', marginBottom: '10px', letterSpacing: '-0.018em', lineHeight: 1.25 }}>
           {parseBold(line.slice(3))}
         </h2>
       );
@@ -95,7 +95,7 @@ export function MarkdownRenderer({ content, textStyle }: MarkdownRendererProps) 
 
     if (line.startsWith('### ')) {
       elements.push(
-        <h3 key={i} style={{ fontSize: '16px', fontWeight: 700, color: 'var(--go-text-secondary)', marginTop: '20px', marginBottom: '8px' }}>
+        <h3 key={i} style={{ fontSize: '15.5px', fontWeight: 600, color: 'var(--gp-ink)', marginTop: '20px', marginBottom: '8px', letterSpacing: '-0.01em' }}>
           {parseBold(line.slice(4))}
         </h3>
       );
@@ -155,8 +155,8 @@ export function MarkdownRenderer({ content, textStyle }: MarkdownRendererProps) 
       elements.push(
         <ul key={`ul-${i}`} style={{ margin: '12px 0', paddingLeft: '20px', listStyle: 'none' }}>
           {items.map((item, ii) => (
-            <li key={ii} style={{ color: 'var(--go-text-secondary)', marginBottom: '6px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-              <span style={{ color: 'var(--go-cyan)', marginTop: '2px', flexShrink: 0 }}>—</span>
+            <li key={ii} style={{ color: 'var(--gp-ink-2)', marginBottom: '6px', display: 'flex', gap: '10px', alignItems: 'flex-start', lineHeight: 1.65 }}>
+              <span style={{ color: 'var(--gp-ink-4)', marginTop: '8px', flexShrink: 0, width: 4, height: 4, borderRadius: '50%', background: 'var(--gp-ink-4)' }} aria-hidden />
               <span>{parseBold(item)}</span>
             </li>
           ))}
@@ -172,7 +172,7 @@ export function MarkdownRenderer({ content, textStyle }: MarkdownRendererProps) 
     }
 
     elements.push(
-      <p key={i} style={{ color: 'var(--go-text-secondary)', lineHeight: '1.75', marginBottom: '4px', ...textStyle }}>
+      <p key={i} style={{ color: 'var(--gp-ink-2)', lineHeight: 1.7, marginBottom: '6px', ...textStyle }}>
         {parseBold(line)}
       </p>
     );
