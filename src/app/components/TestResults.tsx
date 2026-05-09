@@ -97,12 +97,17 @@ function DetailBlock({
     <div>
       <div className="gp-eyebrow mb-1.5">{label}</div>
       <pre
-        className="m-0 p-2.5 rounded text-[12px] gp-mono overflow-auto"
+        className="m-0 p-2.5 rounded text-[12px] gp-mono"
         style={{
           background: 'var(--gp-code-bg)',
           border: '1px solid var(--gp-code-border)',
           color,
           lineHeight: 1.5,
+          whiteSpace: 'pre-wrap',
+          overflowWrap: 'anywhere',
+          wordBreak: 'break-word',
+          maxHeight: '320px',
+          overflowY: 'auto',
         }}
       >
         {children}
