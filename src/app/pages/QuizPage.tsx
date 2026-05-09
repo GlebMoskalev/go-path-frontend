@@ -91,7 +91,7 @@ export function QuizPage() {
     if (selectedAnswer !== null || !currentQuestion) return;
     setSelectedAnswer(idx);
     try {
-      const result = await submitQuizAnswer(currentQuestion.id, idx);
+      const result = await submitQuizAnswer(currentQuestion.id, currentQuestion.options[idx]);
       setAnswerResult(result);
       setHistory((prev) => [...prev, { questionId: currentQuestion.id, chosen: idx, correct: result.correct }]);
       setMood(result.correct ? 'happy' : 'sad');
@@ -449,7 +449,7 @@ function QuizPhase({
             <div className="mt-8 grid gap-2.5">
               {question.options.map((option, idx) => {
                 const isChosen = selectedAnswer === idx;
-                const isCorrect = result?.correct_answer === idx;
+                const isCorrect = result?.correct_answer === option;
                 const isWrongChoice = result && isChosen && !result.correct;
                 const dim = result && !isCorrect && !isChosen;
                 return (

@@ -121,7 +121,7 @@ export interface QuizQuestion {
 
 export interface QuizAnswerResult {
   correct: boolean;
-  correct_answer: number;
+  correct_answer: string;
   explanation: string;
 }
 
@@ -317,7 +317,7 @@ export function fetchQuizQuestions(chapters?: string[], limit?: number) {
   return apiFetch<QuizQuestion[]>(`/api/quiz/${qs ? '?' + qs : ''}`);
 }
 
-export function submitQuizAnswer(questionId: string, answer: number) {
+export function submitQuizAnswer(questionId: string, answer: string) {
   return apiFetch<QuizAnswerResult>('/api/quiz/answer', {
     method: 'POST',
     body: JSON.stringify({ question_id: questionId, answer }),
