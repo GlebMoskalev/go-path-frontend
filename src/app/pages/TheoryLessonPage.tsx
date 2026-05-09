@@ -332,7 +332,7 @@ export function TheoryLessonPage() {
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto p-3">
-                <TheoryTOC chapters={chapters} activeChapter={chapterId} activeLesson={lessonId} />
+                <TheoryTOC chapters={chapters} activeChapter={chapterId} activeLesson={lessonId} onLessonClick={() => setTocOpen(false)} />
               </div>
             </motion.aside>
           </>

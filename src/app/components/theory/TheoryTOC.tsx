@@ -11,13 +11,14 @@ interface Props {
   activeChapter?: string;
   activeLesson?: string;
   className?: string;
+  onLessonClick?: () => void;
 }
 
 /**
  * A calm, collapsible chapter tree. Used in the lesson reader as a slim
  * navigator and in mobile drawer.
  */
-export function TheoryTOC({ chapters, activeChapter, activeLesson, className }: Props) {
+export function TheoryTOC({ chapters, activeChapter, activeLesson, className, onLessonClick }: Props) {
   // Default: only the active chapter expanded; if no active, expand the first.
   const [expanded, setExpanded] = useState<Set<string>>(() => {
     const init = new Set<string>();
@@ -108,6 +109,7 @@ export function TheoryTOC({ chapters, activeChapter, activeLesson, className }: 
                         <li key={lesson.slug}>
                           <Link
                             to={`/theory/${chapter.slug}/${lesson.slug}`}
+                            onClick={onLessonClick}
                             className="group flex items-center gap-2 pl-3 pr-2 py-1.5 no-underline transition-colors"
                             style={{
                               color: isCurrent ? 'var(--gp-ink)' : 'var(--gp-ink-3)',

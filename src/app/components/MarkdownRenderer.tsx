@@ -38,25 +38,42 @@ function parseLinks(text: string, keyPrefix: string): React.ReactNode[] {
 }
 
 function parseInlineCode(text: string, keyPrefix: string): React.ReactNode[] {
-  const parts = text.split(/`([^`]+)`/);
-  return parts.flatMap((part, i) =>
-    i % 2 === 1
-      ? [<code
-          key={`${keyPrefix}c${i}`}
-          style={{
-            fontFamily: "var(--gp-font-mono)",
-            fontSize: '0.86em',
-            background: 'var(--gp-surface-muted)',
-            border: '1px solid var(--gp-border)',
-            borderRadius: '4px',
-            padding: '1px 6px',
-            color: 'var(--gp-ink)',
-          }}
-        >
-          {part}
-        </code>]
-      : parseLinks(part, `${keyPrefix}${i}-`)
-  );
+  const result: React.ReactNode[] = [];
+  // Double-backtick spans (can contain single backticks) matched first, then single-backtick spans
+  const regex = /``((?:[^`]|`(?!`))+)``|`([^`]+)`/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      result.push(...parseLinks(text.slice(lastIndex, match.index), `${keyPrefix}${lastIndex}-`));
+    }
+    // group 1 = double-backtick span, group 2 = single-backtick span
+    const codeContent = match[1] !== undefined ? match[1].trim() : match[2];
+    result.push(
+      <code
+        key={`${keyPrefix}c${match.index}`}
+        style={{
+          fontFamily: 'var(--gp-font-mono)',
+          fontSize: '0.86em',
+          background: 'var(--gp-surface-muted)',
+          border: '1px solid var(--gp-border)',
+          borderRadius: '4px',
+          padding: '1px 6px',
+          color: 'var(--gp-ink)',
+        }}
+      >
+        {codeContent}
+      </code>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    result.push(...parseLinks(text.slice(lastIndex), `${keyPrefix}${lastIndex}-`));
+  }
+
+  return result;
 }
 
 function parseItalic(text: string, keyPrefix: string): React.ReactNode[] {
