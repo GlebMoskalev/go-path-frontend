@@ -86,6 +86,7 @@ export interface TaskDetail {
   description: string;
   template: string;
   difficulty: Difficulty;
+  hints: string[];
   order: number;
   chapter_slug: string;
   chapter_title: string;

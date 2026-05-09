@@ -156,11 +156,21 @@ export function MarkdownRenderer({ content, textStyle }: MarkdownRendererProps) 
     }
 
     if (line.includes('|') && lines[i + 1]?.includes('---')) {
-      const headerCells = line.split('|').filter(c => c.trim());
+      const splitRow = (raw: string): string[] => {
+        const cells = raw.split('|');
+        // Markdown tables that are wrapped in pipes (`| a | b |`) produce empty
+        // leading/trailing elements after split. Strip only those edge artifacts —
+        // do NOT filter interior empty cells, otherwise tables with an empty
+        // top-left header lose a column and rows shift left.
+        if (cells.length && cells[0].trim() === '') cells.shift();
+        if (cells.length && cells[cells.length - 1].trim() === '') cells.pop();
+        return cells;
+      };
+      const headerCells = splitRow(line);
       const rows: string[][] = [];
       i += 2;
       while (i < lines.length && lines[i].includes('|')) {
-        rows.push(lines[i].split('|').filter(c => c.trim()));
+        rows.push(splitRow(lines[i]));
         i++;
       }
       elements.push(

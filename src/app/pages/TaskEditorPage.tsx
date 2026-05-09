@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link } from 'react-router';
 import {
   ChevronRight, ChevronLeft, Play, Sparkles, Check, AlertCircle, History,
-  XCircle, ChevronDown, FileText, RotateCcw, Loader2,
+  XCircle, ChevronDown, FileText, RotateCcw, Loader2, Lightbulb,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -88,6 +88,7 @@ export function TaskEditorPage() {
 
   const [selectedSubmissionIdx, setSelectedSubmissionIdx] = useState<number | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [openHints, setOpenHints] = useState<number[]>([]);
   const historyRef = useRef<HTMLDivElement>(null);
   const lastSubmittedCodeRef = useRef<string | null>(null);
 
@@ -170,6 +171,10 @@ export function TaskEditorPage() {
     setTestResults([]);
     setHistoryOpen(false);
     lastSubmittedCodeRef.current = null;
+  };
+
+  const toggleHint = (index: number) => {
+    setOpenHints((prev) => prev.includes(index) ? prev.filter((h) => h !== index) : [...prev, index]);
   };
 
   const handleSubmit = async () => {
@@ -297,7 +302,7 @@ export function TaskEditorPage() {
 
       {/* Body — split panes */}
       <SplitPane direction="horizontal" defaultSize={42} minSize={22} maxSize={70} style={{ flex: 1 }}>
-        {/* Left: description */}
+        {/* Left: description + hints */}
         <div className="h-full overflow-y-auto" style={{ background: 'var(--gp-bg)' }}>
           <div className="px-8 py-7 max-w-[680px]">
             <div className="gp-eyebrow flex items-center gap-2">
@@ -308,6 +313,62 @@ export function TaskEditorPage() {
             </h1>
             <div className="gp-divider mt-5 mb-7" />
             <MarkdownRenderer content={task.description} />
+
+            {task.hints && task.hints.length > 0 && (
+              <div className="mt-12">
+                <div className="flex items-center gap-2 mb-4">
+                  <Lightbulb size={14} style={{ color: 'var(--gp-warning)' }} />
+                  <span className="gp-eyebrow">Подсказки</span>
+                  <span className="text-[11px] gp-mono ml-1" style={{ color: 'var(--gp-ink-4)' }}>{task.hints.length}</span>
+                </div>
+                <div className="grid gap-2">
+                  {task.hints.map((hint, index) => {
+                    const isOpen = openHints.includes(index);
+                    return (
+                      <div
+                        key={index}
+                        className="rounded-md overflow-hidden"
+                        style={{ background: 'var(--gp-surface)', border: '1px solid var(--gp-border)' }}
+                      >
+                        <button
+                          onClick={() => toggleHint(index)}
+                          className="w-full flex items-center gap-2 px-3 py-2.5 text-left transition-colors"
+                          style={{ background: isOpen ? 'var(--gp-surface-muted)' : 'transparent' }}
+                          onMouseEnter={(e) => { if (!isOpen) e.currentTarget.style.background = 'var(--gp-surface-muted)'; }}
+                          onMouseLeave={(e) => { if (!isOpen) e.currentTarget.style.background = 'transparent'; }}
+                        >
+                          <span className="text-[11px] gp-mono w-6" style={{ color: 'var(--gp-ink-4)' }}>
+                            {String(index + 1).padStart(2, '0')}
+                          </span>
+                          <span className="flex-1 text-[13px] font-medium" style={{ color: 'var(--gp-ink)' }}>
+                            Подсказка
+                          </span>
+                          <motion.span animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: dur.fast }} style={{ color: 'var(--gp-ink-4)' }}>
+                            <ChevronDown size={13} />
+                          </motion.span>
+                        </button>
+                        <AnimatePresence initial={false}>
+                          {isOpen && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: dur.base, ease: ease.emphasized }}
+                              className="overflow-hidden"
+                              style={{ borderTop: '1px solid var(--gp-border)' }}
+                            >
+                              <div className="px-3 py-3 text-[13.5px]" style={{ color: 'var(--gp-ink-2)', lineHeight: 1.6 }}>
+                                {hint}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
