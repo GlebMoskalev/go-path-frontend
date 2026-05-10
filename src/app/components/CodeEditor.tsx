@@ -5,6 +5,7 @@ import { Copy, Check, RotateCcw, AlignLeft, X, HelpCircle } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import type { Completion, CompletionSymbol } from '../api';
 import { formatCode, formatProjectCode } from '../api';
+import { ApiError } from '../api/client';
 
 interface CodeEditorProps {
   value: string;
@@ -21,6 +22,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
   const [copied, setCopied] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [isFormatting, setIsFormatting] = useState(false);
+  const [formatError, setFormatError] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const helpBtnRef = useRef<HTMLButtonElement>(null);
   const { resolved } = useTheme();
@@ -42,6 +44,7 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
   const handleFormat = () => {
     if (isFormatting || language !== 'go') return;
     setIsFormatting(true);
+    setFormatError(null);
 
     const formatPromise = projectSlug && stepSlug
       ? formatProjectCode(projectSlug, stepSlug, value)
@@ -52,8 +55,12 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
         onChange(result.code);
         setIsFormatting(false);
       })
-      .catch(() => {
+      .catch((err) => {
         setIsFormatting(false);
+        if (err instanceof ApiError && err.status === 429) {
+          setFormatError(err.message);
+          setTimeout(() => setFormatError(null), 5000);
+        }
       });
   };
 
@@ -992,27 +999,41 @@ export function CodeEditor({ value, onChange, defaultValue, language = 'go', hei
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {language === 'go' && (
-            <button
-              onClick={handleFormat}
-              disabled={isFormatting}
-              style={{
-                background: 'rgba(0, 173, 216, 0.1)',
-                border: '1px solid rgba(0, 173, 216, 0.3)',
-                borderRadius: '6px',
-                color: 'var(--go-cyan)',
-                cursor: isFormatting ? 'not-allowed' : 'pointer',
-                padding: '3px 10px',
-                fontSize: '12px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
-              title="Форматировать (gofmt)"
-            >
-              <AlignLeft size={12} />
-              Формат
-            </button>
+            <>
+              <button
+                onClick={handleFormat}
+                disabled={isFormatting}
+                style={{
+                  background: 'rgba(0, 173, 216, 0.1)',
+                  border: '1px solid rgba(0, 173, 216, 0.3)',
+                  borderRadius: '6px',
+                  color: 'var(--go-cyan)',
+                  cursor: isFormatting ? 'not-allowed' : 'pointer',
+                  padding: '3px 10px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+                title="Форматировать (gofmt)"
+              >
+                <AlignLeft size={12} />
+                Формат
+              </button>
+              {formatError && (
+                <span style={{
+                  fontSize: '11px',
+                  color: 'var(--gp-danger)',
+                  maxWidth: '220px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }} title={formatError}>
+                  {formatError}
+                </span>
+              )}
+            </>
           )}
           {defaultValue && (
             <button

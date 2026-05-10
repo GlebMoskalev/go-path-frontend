@@ -82,6 +82,26 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     }
   }
 
+  if (res.status === 429) {
+    const retryAfter = res.headers.get('Retry-After');
+    const seconds = retryAfter ? parseInt(retryAfter, 10) : null;
+    const wait = seconds && seconds > 0 ? ` Подождите ${seconds} сек.` : ' Попробуйте через минуту.';
+
+    let message: string;
+    if (path.includes('/submit')) {
+      message = `Слишком много запросов на проверку — не более 5 в минуту.${wait}`;
+    } else if (path.includes('/analyze')) {
+      message = `Лимит AI-запросов исчерпан — не более 10 в минуту.${wait}`;
+    } else if (path.includes('/format')) {
+      message = `Слишком частое форматирование — не более 30 в минуту.${wait}`;
+    } else if (path.includes('/auth') || path.includes('/refresh') || path.includes('/google')) {
+      message = `Слишком много попыток авторизации.${wait}`;
+    } else {
+      message = `Слишком много запросов.${wait}`;
+    }
+    throw new ApiError(429, message);
+  }
+
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
     throw new ApiError(res.status, body.error || `HTTP ${res.status}`);

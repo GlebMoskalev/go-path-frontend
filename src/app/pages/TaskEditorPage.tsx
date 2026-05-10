@@ -9,6 +9,7 @@ import {
   fetchTask, submitTask, analyzeTask, analyzeErrorTask, fetchTaskChapters,
   type TaskDetail, type TaskChapter,
 } from '../api';
+import { ApiError } from '../api/client';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { CodeEditor } from '../components/CodeEditor';
 import { TestResults, type TestResult } from '../components/TestResults';
@@ -202,7 +203,11 @@ export function TaskEditorPage() {
         .then((data) => { setTask(data); if (data.submissions?.length) setSelectedSubmissionIdx(0); })
         .catch(() => {});
     } catch (error) {
-      setTestResults([{ id: 'error', name: 'Ошибка', passed: false, output: error instanceof Error ? error.message : 'Произошла ошибка', expected: '' }]);
+      const msg = error instanceof ApiError && error.status === 429
+        ? error.message
+        : error instanceof Error ? error.message : 'Произошла ошибка';
+      const name = error instanceof ApiError && error.status === 429 ? 'Лимит запросов' : 'Ошибка';
+      setTestResults([{ id: 'error', name, passed: false, output: msg, expected: '' }]);
       setMood('sad');
     } finally {
       setIsRunning(false);
@@ -229,8 +234,12 @@ export function TaskEditorPage() {
         const result = await analyzeErrorTask(chapterId, taskId, code, errorText);
         setAiRecommendation(result.analysis);
       }
-    } catch {
-      setAiRecommendation('Не удалось получить рекомендации. Попробуйте позже.');
+    } catch (error) {
+      setAiRecommendation(
+        error instanceof ApiError && error.status === 429
+          ? error.message
+          : 'Не удалось получить рекомендации. Попробуйте позже.',
+      );
     } finally {
       setIsLoadingAI(false);
     }
