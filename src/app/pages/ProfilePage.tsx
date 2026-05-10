@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import {
-  Pencil, Check, X, BookOpen, Code2, FolderGit2, AlertTriangle, ArrowLeft,
+  Pencil, Check, X, BookOpen, Code2, FolderGit2, ArrowLeft,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { fetchUserStats, type UserStats } from '../api';
-import { Button, Container, Eyebrow, ProgressRing, ProgressTrack, fadeUp, staggerParent, staggerChild } from '../design';
+import { Container, Eyebrow, ProgressRing, ProgressTrack, staggerParent, staggerChild } from '../design';
 import { GopherAvatar } from '../components/GopherAvatar';
 
 function formatDate(iso?: string) {
@@ -20,8 +20,7 @@ function formatDate(iso?: string) {
 }
 
 export function ProfilePage() {
-  const { user, updateUser, deleteUser } = useAuth();
-  const navigate = useNavigate();
+  const { user, updateUser } = useAuth();
 
   const [stats, setStats] = useState<UserStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -30,11 +29,6 @@ export function ProfilePage() {
   const [nameInput, setNameInput] = useState(user?.name ?? '');
   const [savingName, setSavingName] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
-
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -95,37 +89,23 @@ export function ProfilePage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (deleteConfirmText.trim().toLowerCase() !== 'удалить') { setDeleteError('Введи слово «удалить» для подтверждения'); return; }
-    setDeleting(true);
-    setDeleteError(null);
-    try {
-      await deleteUser();
-      navigate('/');
-    } catch {
-      setDeleteError('Не удалось удалить аккаунт. Попробуй позже.');
-    } finally {
-      setDeleting(false);
-    }
-  };
-
   return (
     <div className="min-h-[calc(100vh-60px)]" style={{ background: 'var(--gp-bg)' }}>
       {/* Header */}
-      <header className="pt-14 pb-12" style={{ borderBottom: '1px solid var(--gp-border)' }}>
+      <header className="pt-10 sm:pt-14 pb-8 sm:pb-12" style={{ borderBottom: '1px solid var(--gp-border)' }}>
         <Container>
           <motion.div initial="hidden" animate="visible" variants={staggerParent(0.06)}>
             <motion.div variants={staggerChild}>
               <Eyebrow>Профиль</Eyebrow>
             </motion.div>
 
-            <motion.div variants={staggerChild} className="mt-6 flex items-start gap-7 flex-wrap">
+            <motion.div variants={staggerChild} className="mt-6 flex items-start gap-4 sm:gap-7 flex-wrap">
               {/* Gopher mascot — interactive on hover, not clickable */}
               <div
-                className="flex items-center justify-center w-[96px] h-[96px] rounded-full flex-shrink-0"
+                className="flex items-center justify-center w-[72px] h-[72px] sm:w-[96px] sm:h-[96px] rounded-full flex-shrink-0"
                 style={{ background: 'var(--gp-surface-muted)', border: '1px solid var(--gp-border-strong)' }}
               >
-                <GopherAvatar size={72} />
+                <GopherAvatar size={56} />
               </div>
 
               {/* Identity */}
@@ -171,13 +151,13 @@ export function ProfilePage() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 group">
-                    <h1 className="gp-display" style={{ fontSize: 'clamp(28px, 4vw, 44px)', lineHeight: 1.1 }}>
+                    <h1 className="gp-display break-words min-w-0" style={{ fontSize: 'clamp(24px, 4vw, 44px)', lineHeight: 1.1 }}>
                       {user.name}
                     </h1>
                     <button
                       onClick={() => { setEditingName(true); setNameInput(user.name); }}
                       aria-label="Изменить имя"
-                      className="opacity-0 group-hover:opacity-100 transition-opacity w-8 h-8 inline-flex items-center justify-center rounded-md"
+                      className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity w-8 h-8 inline-flex items-center justify-center rounded-md flex-shrink-0"
                       style={{ color: 'var(--gp-ink-3)' }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--gp-surface-muted)')}
                       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
@@ -188,8 +168,8 @@ export function ProfilePage() {
                 )}
                 {nameError && <div className="mt-2 text-[12.5px]" style={{ color: 'var(--gp-danger)' }}>{nameError}</div>}
 
-                <div className="mt-3 flex items-center gap-3 flex-wrap text-[13px]" style={{ color: 'var(--gp-ink-3)' }}>
-                  <span>{user.email}</span>
+                <div className="mt-3 flex items-center gap-x-3 gap-y-1 flex-wrap text-[12.5px] sm:text-[13px]" style={{ color: 'var(--gp-ink-3)' }}>
+                  <span className="break-all">{user.email}</span>
                   <span aria-hidden style={{ color: 'var(--gp-ink-5)' }}>·</span>
                   <span className="inline-flex items-center gap-1.5">
                     <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: user.is_active ? 'var(--gp-success)' : 'var(--gp-ink-4)' }} />
@@ -209,21 +189,23 @@ export function ProfilePage() {
       </header>
 
       {/* Stats */}
-      <Container className="py-12">
-        <motion.div initial="hidden" animate="visible" variants={staggerParent(0.06)} className="grid md:grid-cols-12 gap-8">
+      <Container className="py-8 sm:py-12">
+        <motion.div initial="hidden" animate="visible" variants={staggerParent(0.06)} className="grid md:grid-cols-12 gap-5 sm:gap-8">
           {/* Overall ring */}
           <motion.div variants={staggerChild} className="md:col-span-4">
-            <div className="gp-card p-6 h-full">
+            <div className="gp-card p-5 sm:p-6 h-full">
               <Eyebrow marker={false}>Общий прогресс</Eyebrow>
-              <div className="mt-5 flex items-center gap-5">
+              <div className="mt-5 flex items-center gap-4 sm:gap-5">
                 {statsLoading ? (
-                  <div className="w-[100px] h-[100px] rounded-full gp-skel" />
+                  <div className="w-[88px] h-[88px] sm:w-[100px] sm:h-[100px] rounded-full gp-skel flex-shrink-0" />
                 ) : (
-                  <ProgressRing value={totals.ratio} size={100} stroke={6} tone={totals.ratio === 1 ? 'success' : 'ink'}>
-                    <span className="gp-display" style={{ fontSize: 24, color: 'var(--gp-ink)' }}>
-                      {Math.round(totals.ratio * 100)}%
-                    </span>
-                  </ProgressRing>
+                  <div className="flex-shrink-0">
+                    <ProgressRing value={totals.ratio} size={88} stroke={6} tone={totals.ratio === 1 ? 'success' : 'ink'}>
+                      <span className="gp-display" style={{ fontSize: 22, color: 'var(--gp-ink)' }}>
+                        {Math.round(totals.ratio * 100)}%
+                      </span>
+                    </ProgressRing>
+                  </div>
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="text-[15px] font-medium" style={{ color: 'var(--gp-ink)' }}>
@@ -251,7 +233,7 @@ export function ProfilePage() {
           </motion.div>
 
           {/* Per-track cards */}
-          <div className="md:col-span-8 grid gap-5">
+          <div className="md:col-span-8 grid gap-4 sm:gap-5">
             <motion.div variants={staggerChild}>
               <TrackCard
                 icon={<BookOpen size={14} />}
@@ -286,64 +268,6 @@ export function ProfilePage() {
         </motion.div>
       </Container>
 
-      {/* Danger zone */}
-      <Container className="pb-24">
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={fadeUp}>
-          <div className="gp-divider mb-8" />
-          <div className="grid md:grid-cols-12 gap-8">
-            <div className="md:col-span-4">
-              <Eyebrow marker={false}>Опасная зона</Eyebrow>
-              <h3 className="mt-3 font-medium" style={{ fontSize: 20, color: 'var(--gp-ink)', letterSpacing: '-0.015em' }}>
-                Удаление аккаунта
-              </h3>
-              <p className="mt-2 text-[13.5px]" style={{ color: 'var(--gp-ink-3)', lineHeight: 1.55 }}>
-                Удалит профиль и весь твой прогресс. Действие нельзя отменить.
-              </p>
-            </div>
-            <div className="md:col-span-8">
-              {!confirmDelete ? (
-                <Button variant="ghost" onClick={() => setConfirmDelete(true)} iconLeft={<AlertTriangle size={13} style={{ color: 'var(--gp-danger)' }} />}>
-                  <span style={{ color: 'var(--gp-danger)' }}>Удалить аккаунт</span>
-                </Button>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="rounded-lg p-5"
-                  style={{ background: 'var(--gp-surface)', border: '1px solid var(--gp-danger)' }}
-                >
-                  <div className="text-[14px] font-medium" style={{ color: 'var(--gp-ink)' }}>Подтверди удаление</div>
-                  <p className="mt-1 text-[13px]" style={{ color: 'var(--gp-ink-3)', lineHeight: 1.55 }}>
-                    Чтобы подтвердить, введи слово <span className="gp-mono px-1.5 py-0.5 rounded" style={{ background: 'var(--gp-surface-muted)', border: '1px solid var(--gp-border)', color: 'var(--gp-ink)' }}>удалить</span>.
-                  </p>
-                  <input
-                    type="text"
-                    value={deleteConfirmText}
-                    onChange={(e) => setDeleteConfirmText(e.target.value)}
-                    placeholder="удалить"
-                    className="mt-4 w-full max-w-[260px] px-3 py-2 rounded-md text-[14px] outline-none gp-mono"
-                    style={{ background: 'var(--gp-bg)', border: '1px solid var(--gp-border-strong)', color: 'var(--gp-ink)' }}
-                  />
-                  {deleteError && <div className="mt-2 text-[12.5px]" style={{ color: 'var(--gp-danger)' }}>{deleteError}</div>}
-                  <div className="mt-4 flex items-center gap-2">
-                    <Button
-                      variant="primary"
-                      onClick={handleDelete}
-                      loading={deleting}
-                      style={{ background: 'var(--gp-danger)' } as React.CSSProperties}
-                    >
-                      Подтвердить удаление
-                    </Button>
-                    <Button variant="ghost" onClick={() => { setConfirmDelete(false); setDeleteConfirmText(''); setDeleteError(null); }}>
-                      Отмена
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
-            </div>
-          </div>
-        </motion.div>
-      </Container>
     </div>
   );
 }
@@ -376,20 +300,20 @@ function TrackCard({
 }) {
   const ratio = safeRatio(done, total);
   return (
-    <div className="gp-card p-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="inline-flex items-center justify-center w-8 h-8 rounded-md" style={{ background: 'var(--gp-surface-muted)', color: 'var(--gp-ink-2)' }}>
+    <div className="gp-card p-5 sm:p-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="inline-flex items-center justify-center w-8 h-8 rounded-md flex-shrink-0" style={{ background: 'var(--gp-surface-muted)', color: 'var(--gp-ink-2)' }}>
             {icon}
           </span>
-          <div>
+          <div className="min-w-0">
             <div className="text-[15px] font-medium" style={{ color: 'var(--gp-ink)' }}>{title}</div>
             <div className="text-[12px] gp-mono mt-0.5" style={{ color: 'var(--gp-ink-4)' }}>
               {loading ? <span className="inline-block w-12 h-3 gp-skel" /> : `${done} из ${total}`}
             </div>
           </div>
         </div>
-        <div className="text-[13px] gp-mono" style={{ color: ratio === 1 ? 'var(--gp-success)' : 'var(--gp-ink-3)' }}>
+        <div className="text-[13px] gp-mono flex-shrink-0" style={{ color: ratio === 1 ? 'var(--gp-success)' : 'var(--gp-ink-3)' }}>
           {loading ? '—' : `${Math.round(ratio * 100)}%`}
         </div>
       </div>
@@ -401,9 +325,9 @@ function TrackCard({
           {items.map((it) => {
             const r = safeRatio(it.done, it.total);
             return (
-              <li key={it.name} className="grid grid-cols-[1fr_auto_auto] items-center gap-3">
-                <span className="text-[13px] truncate" style={{ color: 'var(--gp-ink-2)' }}>{it.name}</span>
-                <div className="w-[120px] h-[2px] rounded-full overflow-hidden" style={{ background: 'var(--gp-surface-strong)' }}>
+              <li key={it.name} className="grid grid-cols-[1fr_auto_auto] items-center gap-2 sm:gap-3">
+                <span className="text-[12.5px] sm:text-[13px] truncate" style={{ color: 'var(--gp-ink-2)' }}>{it.name}</span>
+                <div className="w-[60px] sm:w-[120px] h-[2px] rounded-full overflow-hidden" style={{ background: 'var(--gp-surface-strong)' }}>
                   <div
                     className="h-full transition-all"
                     style={{

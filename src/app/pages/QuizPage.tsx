@@ -216,26 +216,28 @@ function SetupPhase({
 }) {
   return (
     <div className="min-h-[calc(100vh-60px)]" style={{ background: 'var(--gp-bg)' }}>
-      <header className="pt-14 pb-10" style={{ borderBottom: '1px solid var(--gp-border)' }}>
+      <header className="pt-10 sm:pt-14 pb-8 sm:pb-10" style={{ borderBottom: '1px solid var(--gp-border)' }}>
         <Container>
           <motion.div initial="hidden" animate="visible" variants={staggerParent(0.06)}>
             <motion.div variants={staggerChild}>
               <Eyebrow>Раздел · 03</Eyebrow>
             </motion.div>
-            <motion.h1 variants={staggerChild} className="gp-display mt-4" style={{ fontSize: 'clamp(36px, 5vw, 60px)' }}>
+            <motion.h1 variants={staggerChild} className="gp-display mt-4" style={{ fontSize: 'clamp(28px, 5vw, 60px)' }}>
               Короткие <em>проверки</em>
               <br />
               знаний.
             </motion.h1>
-            <motion.p variants={staggerChild} className="mt-5 max-w-[58ch] text-[16px]" style={{ color: 'var(--gp-ink-3)' }}>
+            <motion.p variants={staggerChild} className="mt-4 sm:mt-5 max-w-[58ch] text-[14px] sm:text-[16px]" style={{ color: 'var(--gp-ink-3)' }}>
               Выбери разделы и количество вопросов. Мгновенная обратная связь после каждого ответа.
-              Управление с клавиатуры — <kbd className="gp-mono px-1.5 py-0.5 text-[11px] rounded" style={{ background: 'var(--gp-surface-muted)', border: '1px solid var(--gp-border)' }}>1</kbd>–<kbd className="gp-mono px-1.5 py-0.5 text-[11px] rounded" style={{ background: 'var(--gp-surface-muted)', border: '1px solid var(--gp-border)' }}>4</kbd> для ответа, <kbd className="gp-mono px-1.5 py-0.5 text-[11px] rounded" style={{ background: 'var(--gp-surface-muted)', border: '1px solid var(--gp-border)' }}>⏎</kbd> для перехода.
+              <span className="hidden sm:inline">
+                {' '}Управление с клавиатуры — <kbd className="gp-mono px-1.5 py-0.5 text-[11px] rounded" style={{ background: 'var(--gp-surface-muted)', border: '1px solid var(--gp-border)' }}>1</kbd>–<kbd className="gp-mono px-1.5 py-0.5 text-[11px] rounded" style={{ background: 'var(--gp-surface-muted)', border: '1px solid var(--gp-border)' }}>4</kbd> для ответа, <kbd className="gp-mono px-1.5 py-0.5 text-[11px] rounded" style={{ background: 'var(--gp-surface-muted)', border: '1px solid var(--gp-border)' }}>⏎</kbd> для перехода.
+              </span>
             </motion.p>
           </motion.div>
         </Container>
       </header>
 
-      <Container className="py-12 grid md:grid-cols-12 gap-10">
+      <Container className="py-8 sm:py-12 grid md:grid-cols-12 gap-8 md:gap-10">
         {/* Chapters */}
         <div className="md:col-span-8">
           <div className="flex items-center justify-between mb-4">
@@ -429,7 +431,7 @@ function QuizPhase({
         </Container>
       </div>
 
-      <Container className="pt-12 pb-24 max-w-[760px]">
+      <Container className="pt-8 sm:pt-12 pb-16 sm:pb-24 max-w-[760px]">
         <AnimatePresence mode="wait">
           <motion.div
             key={index}
@@ -439,14 +441,14 @@ function QuizPhase({
             transition={{ duration: dur.slow, ease: ease.emphasized }}
           >
             <Eyebrow>Вопрос {index + 1}</Eyebrow>
-            <div className="mt-3 text-[22px] md:text-[26px] font-medium" style={{ color: 'var(--gp-ink)', letterSpacing: '-0.015em', lineHeight: 1.3 }}>
+            <div className="mt-3 text-[18px] sm:text-[22px] md:text-[26px] font-medium" style={{ color: 'var(--gp-ink)', letterSpacing: '-0.015em', lineHeight: 1.3 }}>
               <MarkdownRenderer
                 content={question.question}
                 textStyle={{ fontSize: 'inherit', fontWeight: 'inherit', color: 'inherit', lineHeight: 'inherit', margin: 0 }}
               />
             </div>
 
-            <div className="mt-8 grid gap-2.5">
+            <div className="mt-6 sm:mt-8 grid gap-2.5">
               {question.options.map((option, idx) => {
                 const isChosen = selectedAnswer === idx;
                 const isCorrect = result?.correct_answer === option;
@@ -460,7 +462,7 @@ function QuizPhase({
                     whileHover={selectedAnswer === null ? { y: -1 } : undefined}
                     whileTap={selectedAnswer === null ? { y: 0 } : undefined}
                     transition={{ duration: dur.fast }}
-                    className="text-left flex items-start gap-4 px-5 py-4 rounded-lg transition-colors"
+                    className="text-left flex items-start gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-4 rounded-lg transition-colors"
                     style={{
                       background:
                         isCorrect && result ? 'var(--gp-success-soft)' :
@@ -503,7 +505,7 @@ function QuizPhase({
                         isWrongChoice ? <X size={12} strokeWidth={2.5} /> :
                         LETTERS[idx]}
                     </span>
-                    <span className="text-[15px]" style={{ color: 'var(--gp-ink)', lineHeight: 1.55 }}>
+                    <span className="text-[14px] sm:text-[15px] min-w-0 break-words" style={{ color: 'var(--gp-ink)', lineHeight: 1.55 }}>
                       {parseBold(option)}
                     </span>
                   </motion.button>
@@ -519,7 +521,7 @@ function QuizPhase({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: dur.base, ease: ease.emphasized }}
-                  className="mt-6 rounded-lg p-5"
+                  className="mt-5 sm:mt-6 rounded-lg p-4 sm:p-5"
                   style={{
                     background: 'var(--gp-surface)',
                     border: '1px solid var(--gp-border)',
@@ -547,11 +549,11 @@ function QuizPhase({
             </AnimatePresence>
 
             {selectedAnswer !== null && (
-              <div ref={actionBarRef} className="mt-8 flex justify-end items-center gap-3">
-                <span className="text-[12px]" style={{ color: 'var(--gp-ink-4)' }}>
+              <div ref={actionBarRef} className="mt-6 sm:mt-8 flex justify-end items-center gap-3 flex-wrap">
+                <span className="hidden sm:inline text-[12px]" style={{ color: 'var(--gp-ink-4)' }}>
                   <kbd className="gp-mono px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'var(--gp-surface-muted)', border: '1px solid var(--gp-border)' }}>⏎</kbd> чтобы продолжить
                 </span>
-                <Button variant="primary" onClick={onNext} iconRight={<ArrowRight size={13} />}>
+                <Button variant="primary" onClick={onNext} iconRight={<ArrowRight size={13} />} className="w-full sm:w-auto">
                   {index < total - 1 ? 'Дальше' : 'Завершить'}
                 </Button>
               </div>
@@ -595,7 +597,7 @@ function ResultPhase({
 
   return (
     <div className="min-h-[calc(100vh-60px)]" style={{ background: 'var(--gp-bg)' }}>
-      <Container className="pt-20 pb-24 max-w-[560px]">
+      <Container className="pt-12 sm:pt-20 pb-16 sm:pb-24 max-w-[560px]">
         <motion.div
           initial="hidden"
           animate="visible"
@@ -608,15 +610,15 @@ function ResultPhase({
           </motion.div>
 
           {/* Progress ring */}
-          <motion.div variants={scaleIn} className="mt-10">
+          <motion.div variants={scaleIn} className="mt-8 sm:mt-10">
             <ProgressRing
               value={ratio}
-              size={160}
+              size={140}
               stroke={7}
               tone={ratio >= 0.6 ? 'success' : 'ink'}
             >
               <span className="text-center">
-                <span className="block gp-display" style={{ fontSize: 40, lineHeight: 1, color: 'var(--gp-ink)' }}>
+                <span className="block gp-display" style={{ fontSize: 36, lineHeight: 1, color: 'var(--gp-ink)' }}>
                   {score}
                 </span>
                 <span className="block text-[12px] gp-mono mt-1" style={{ color: 'var(--gp-ink-4)' }}>
@@ -627,12 +629,12 @@ function ResultPhase({
           </motion.div>
 
           {/* Verdict */}
-          <motion.h1 variants={staggerChild} className="gp-display mt-6" style={{ fontSize: 'clamp(36px, 5vw, 56px)' }}>
+          <motion.h1 variants={staggerChild} className="gp-display mt-5 sm:mt-6" style={{ fontSize: 'clamp(28px, 5vw, 56px)' }}>
             <em>{verdict}.</em>
           </motion.h1>
 
           {/* Stat cards */}
-          <motion.div variants={fadeUp} className="mt-8 w-full grid grid-cols-3 gap-3">
+          <motion.div variants={fadeUp} className="mt-6 sm:mt-8 w-full grid grid-cols-3 gap-2 sm:gap-3">
             {[
               { label: 'Точность', value: `${Math.round(ratio * 100)}%`, color: ratio >= 0.6 ? 'var(--gp-success)' : 'var(--gp-danger)' },
               { label: 'Верно', value: String(score), color: 'var(--gp-ink)' },
@@ -640,11 +642,11 @@ function ResultPhase({
             ].map(({ label, value, color }) => (
               <div
                 key={label}
-                className="rounded-lg py-4 px-3"
+                className="rounded-lg py-3 sm:py-4 px-2 sm:px-3"
                 style={{ background: 'var(--gp-surface)', border: '1px solid var(--gp-border)' }}
               >
                 <div className="gp-eyebrow">{label}</div>
-                <div className="gp-display mt-2" style={{ fontSize: 28, color }}>{value}</div>
+                <div className="gp-display mt-1.5 sm:mt-2" style={{ fontSize: 22, color }}>{value}</div>
               </div>
             ))}
           </motion.div>
@@ -695,11 +697,11 @@ function ResultPhase({
           </motion.div>
 
           {/* Actions */}
-          <motion.div variants={fadeUp} className="mt-10 flex items-center gap-3 flex-wrap justify-center">
-            <Button variant="primary" size="lg" onClick={onRetry} iconRight={<ArrowRight size={14} />}>
+          <motion.div variants={fadeUp} className="mt-8 sm:mt-10 flex items-center gap-3 flex-wrap justify-center w-full">
+            <Button variant="primary" size="lg" onClick={onRetry} iconRight={<ArrowRight size={14} />} className="w-full sm:w-auto">
               Пройти ещё раз
             </Button>
-            <Button variant="ghost" size="lg" onClick={onSetup}>
+            <Button variant="ghost" size="lg" onClick={onSetup} className="w-full sm:w-auto">
               Изменить разделы
             </Button>
           </motion.div>

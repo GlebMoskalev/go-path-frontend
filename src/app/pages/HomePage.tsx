@@ -103,7 +103,7 @@ export function HomePage() {
 /* -------------------------------------------------- */
 function MarketingHero({ onLogin }: { onLogin: () => void }) {
   return (
-    <section className="pt-20 md:pt-28 pb-20 md:pb-28">
+    <section className="pt-14 sm:pt-20 md:pt-28 pb-14 sm:pb-20 md:pb-28">
       <Container>
         <motion.div initial="hidden" animate="visible" variants={staggerParent(0.08)}>
           <motion.div variants={staggerChild} className="flex items-center gap-3">
@@ -116,8 +116,8 @@ function MarketingHero({ onLogin }: { onLogin: () => void }) {
 
           <motion.h1
             variants={staggerChild}
-            className="gp-display mt-6 max-w-[16ch]"
-            style={{ fontSize: 'clamp(40px, 7vw, 84px)' }}
+            className="gp-display mt-5 sm:mt-6 max-w-[16ch]"
+            style={{ fontSize: 'clamp(34px, 7vw, 84px)' }}
           >
             Go,&nbsp;
             <em>проложенный</em>
@@ -127,14 +127,14 @@ function MarketingHero({ onLogin }: { onLogin: () => void }) {
 
           <motion.p
             variants={staggerChild}
-            className="mt-7 max-w-[58ch] text-[17px] md:text-[18px]"
+            className="mt-5 sm:mt-7 max-w-[58ch] text-[15px] sm:text-[17px] md:text-[18px]"
             style={{ color: 'var(--gp-ink-2)', lineHeight: 1.55 }}
           >
             Обучение Go в одном месте — теория, задачи, квизы и проекты. Без шумной геймификации:
             спокойная типографика, продуманные шаги, обратная связь, которой можно доверять.
           </motion.p>
 
-          <motion.div variants={staggerChild} className="mt-10 flex flex-wrap items-center gap-3">
+          <motion.div variants={staggerChild} className="mt-8 sm:mt-10 flex flex-wrap items-center gap-3">
             <Button size="lg" variant="primary" onClick={onLogin} iconRight={<ArrowRight size={15} />}>
               Начать путь
             </Button>
@@ -143,7 +143,7 @@ function MarketingHero({ onLogin }: { onLogin: () => void }) {
                 Открыть теорию
               </Button>
             </Link>
-            <span className="text-[12px] ml-1" style={{ color: 'var(--gp-ink-4)' }}>
+            <span className="text-[12px] sm:ml-1 w-full sm:w-auto" style={{ color: 'var(--gp-ink-4)' }}>
               Бесплатно · Google OAuth
             </span>
           </motion.div>
@@ -151,7 +151,7 @@ function MarketingHero({ onLogin }: { onLogin: () => void }) {
       </Container>
 
       {/* Subtle hairline + dotted "path" — single-use motif */}
-      <Container className="mt-20">
+      <Container className="mt-14 sm:mt-20">
         <div className="flex items-center gap-4">
           <span className="text-[11px] gp-mono" style={{ color: 'var(--gp-ink-4)' }}>
             ↓ путь
@@ -186,7 +186,7 @@ function DashboardHero() {
   const firstName = user?.name?.split(' ')[0] ?? '';
 
   return (
-    <section className="pt-14 md:pt-20 pb-12">
+    <section className="pt-10 sm:pt-14 md:pt-20 pb-10 sm:pb-12">
       <Container>
         <motion.div initial="hidden" animate="visible" variants={staggerParent(0.06)}>
           <motion.div variants={staggerChild}>
@@ -196,27 +196,29 @@ function DashboardHero() {
           <motion.h1
             variants={staggerChild}
             className="gp-display mt-5"
-            style={{ fontSize: 'clamp(32px, 4.6vw, 56px)' }}
+            style={{ fontSize: 'clamp(28px, 4.6vw, 56px)' }}
           >
             С возвращением,&nbsp;
             <em>{firstName || 'друг'}</em>.
           </motion.h1>
 
-          <motion.p variants={staggerChild} className="mt-4 max-w-[62ch] text-[16px]" style={{ color: 'var(--gp-ink-3)' }}>
+          <motion.p variants={staggerChild} className="mt-4 max-w-[62ch] text-[15px] sm:text-[16px]" style={{ color: 'var(--gp-ink-3)' }}>
             Маленькие шаги — большой прогресс. Возьми сегодня по уроку из каждого раздела.
           </motion.p>
 
-          <motion.div variants={staggerChild} className="mt-12 grid gap-4 md:grid-cols-12">
+          <motion.div variants={staggerChild} className="mt-8 sm:mt-12 grid gap-4 md:grid-cols-12">
             {/* Overall ring */}
-            <div className="md:col-span-4 gp-card p-6 flex items-center gap-5">
-              <ProgressRing value={overall} size={84} stroke={5} tone="ink">
-                <span className="text-[15px] font-medium gp-mono" style={{ color: 'var(--gp-ink)' }}>
-                  {Math.round(overall * 100)}%
-                </span>
-              </ProgressRing>
+            <div className="md:col-span-4 gp-card p-5 sm:p-6 flex items-center gap-4 sm:gap-5">
+              <div className="flex-shrink-0">
+                <ProgressRing value={overall} size={76} stroke={5} tone="ink">
+                  <span className="text-[14px] font-medium gp-mono" style={{ color: 'var(--gp-ink)' }}>
+                    {Math.round(overall * 100)}%
+                  </span>
+                </ProgressRing>
+              </div>
               <div className="min-w-0">
                 <div className="text-[12px]" style={{ color: 'var(--gp-ink-3)' }}>Общий прогресс</div>
-                <div className="mt-1 text-[20px] font-medium" style={{ color: 'var(--gp-ink)', letterSpacing: '-0.01em' }}>
+                <div className="mt-1 text-[18px] sm:text-[20px] font-medium" style={{ color: 'var(--gp-ink)', letterSpacing: '-0.01em' }}>
                   {loading ? <span className="inline-block w-24 h-5 gp-skel" /> : describeOverall(overall)}
                 </div>
                 <div className="mt-1 text-[12px]" style={{ color: 'var(--gp-ink-4)' }}>
@@ -226,7 +228,7 @@ function DashboardHero() {
             </div>
 
             {/* Per-track tracks */}
-            <div className="md:col-span-8 gp-card p-6 grid gap-5">
+            <div className="md:col-span-8 gp-card p-5 sm:p-6 grid gap-4 sm:gap-5">
               <TrackRow
                 to="/theory"
                 title="Теория"
@@ -268,7 +270,7 @@ function TrackRow({
   to, title, value, done, total, icon, loading,
 }: { to: string; title: string; value: number; done: number; total: number; icon: React.ReactNode; loading: boolean }) {
   return (
-    <Link to={to} className="group flex items-center gap-5 no-underline">
+    <Link to={to} className="group flex items-center gap-3 sm:gap-5 no-underline">
       <span
         className="inline-flex items-center justify-center w-8 h-8 rounded-md flex-shrink-0"
         style={{ background: 'var(--gp-surface-muted)', color: 'var(--gp-ink-2)' }}
@@ -276,17 +278,17 @@ function TrackRow({
         {icon}
       </span>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-2 gap-2">
           <span className="text-[14px] font-medium transition-colors group-hover:underline underline-offset-4" style={{ color: 'var(--gp-ink)' }}>
             {title}
           </span>
-          <span className="text-[12px] gp-mono" style={{ color: 'var(--gp-ink-3)' }}>
+          <span className="text-[12px] gp-mono flex-shrink-0" style={{ color: 'var(--gp-ink-3)' }}>
             {loading ? <span className="inline-block w-12 h-3 gp-skel" /> : `${done}/${total}`}
           </span>
         </div>
         <ProgressTrack value={value} tone={value === 1 ? 'success' : 'ink'} />
       </div>
-      <ArrowUpRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--gp-ink-3)' }} />
+      <ArrowUpRight size={14} className="hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" style={{ color: 'var(--gp-ink-3)' }} />
     </Link>
   );
 }
@@ -310,15 +312,15 @@ function safeRatio(a: number, b: number) {
 /* -------------------------------------------------- */
 function PathIndex({ authed }: { authed: boolean }) {
   return (
-    <section className="py-20 md:py-24" style={{ borderTop: '1px solid var(--gp-border)' }}>
+    <section className="py-14 sm:py-20 md:py-24" style={{ borderTop: '1px solid var(--gp-border)' }}>
       <Container>
-        <div className="grid md:grid-cols-12 gap-10">
+        <div className="grid md:grid-cols-12 gap-8 md:gap-10">
           <div className="md:col-span-4">
             <Eyebrow marker={false}>Содержание</Eyebrow>
-            <h2 className="gp-display mt-4" style={{ fontSize: 'clamp(28px, 3.6vw, 44px)' }}>
+            <h2 className="gp-display mt-4" style={{ fontSize: 'clamp(24px, 3.6vw, 44px)' }}>
               Четыре <em>опоры</em> курса.
             </h2>
-            <p className="mt-4 text-[15px] max-w-[42ch]" style={{ color: 'var(--gp-ink-3)' }}>
+            <p className="mt-4 text-[14px] sm:text-[15px] max-w-[42ch]" style={{ color: 'var(--gp-ink-3)' }}>
               {authed
                 ? 'Каждый раздел — самостоятельный, но они работают лучше вместе. Перемещайся свободно.'
                 : 'Каждый формат отвечает за свою сторону обучения и усиливает остальные.'}
@@ -337,11 +339,11 @@ function PathIndex({ authed }: { authed: boolean }) {
               <motion.li key={p.to} variants={staggerChild} style={{ borderBottom: '1px solid var(--gp-border)' }}>
                 <Link
                   to={p.to}
-                  className="group flex items-center gap-6 py-6 no-underline transition-colors"
+                  className="group flex items-center gap-3 sm:gap-6 py-4 sm:py-6 no-underline transition-colors"
                   style={{ color: 'var(--gp-ink)' }}
                 >
                   <span
-                    className="text-[12px] gp-mono w-8"
+                    className="text-[12px] gp-mono w-6 sm:w-8 flex-shrink-0"
                     style={{ color: 'var(--gp-ink-4)' }}
                   >
                     {p.num}
@@ -354,16 +356,16 @@ function PathIndex({ authed }: { authed: boolean }) {
                       {p.icon}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[18px] font-medium" style={{ letterSpacing: '-0.01em' }}>
+                      <span className="block text-[16px] sm:text-[18px] font-medium" style={{ letterSpacing: '-0.01em' }}>
                         {p.title}
                       </span>
-                      <span className="block text-[13px] mt-0.5 truncate" style={{ color: 'var(--gp-ink-3)' }}>
+                      <span className="block text-[12.5px] sm:text-[13px] mt-0.5 truncate" style={{ color: 'var(--gp-ink-3)' }}>
                         {p.sub}
                       </span>
                     </span>
                   </span>
                   <span
-                    className="hidden md:inline-flex items-center gap-2 text-[12px] transition-transform group-hover:-translate-x-1"
+                    className="hidden md:inline-flex items-center gap-2 text-[12px] transition-transform group-hover:-translate-x-1 flex-shrink-0"
                     style={{ color: 'var(--gp-ink-3)' }}
                   >
                     Открыть <ArrowUpRight size={13} />
@@ -383,29 +385,31 @@ function PathIndex({ authed }: { authed: boolean }) {
 /* -------------------------------------------------- */
 function CodeShowcase() {
   return (
-    <section className="py-16 md:py-24" style={{ borderTop: '1px solid var(--gp-border)' }}>
+    <section className="py-12 sm:py-16 md:py-24" style={{ borderTop: '1px solid var(--gp-border)' }}>
       <Container>
         <motion.div
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.3 }}
           variants={fadeUp}
-          className="grid md:grid-cols-12 gap-10 items-start"
+          className="grid md:grid-cols-12 gap-8 md:gap-10 items-start"
         >
           <div className="md:col-span-5">
             <Eyebrow>Пример</Eyebrow>
-            <h2 className="gp-display mt-4" style={{ fontSize: 'clamp(26px, 3.4vw, 40px)' }}>
+            <h2 className="gp-display mt-4" style={{ fontSize: 'clamp(22px, 3.4vw, 40px)' }}>
               Конкурентность <em>с первых строк</em>.
             </h2>
-            <p className="mt-4 text-[15px] max-w-[42ch]" style={{ color: 'var(--gp-ink-3)' }}>
+            <p className="mt-4 text-[14px] sm:text-[15px] max-w-[42ch]" style={{ color: 'var(--gp-ink-3)' }}>
               Каждый урок сопровождается работающим кодом, который ты запускаешь и меняешь сам — без копирования из учебника.
             </p>
-            <div className="mt-6 flex items-center gap-2 text-[12px]" style={{ color: 'var(--gp-ink-4)' }}>
+            <div className="mt-5 flex items-center gap-2 text-[12px]" style={{ color: 'var(--gp-ink-4)' }}>
               <Sparkles size={13} /> Подсветка, объяснение, AI-разбор кода
             </div>
           </div>
-          <motion.div variants={scaleIn} className="md:col-span-7">
-            <CodeBlock filename="goroutine_example.go" language="go" code={SAMPLE} />
+          <motion.div variants={scaleIn} className="md:col-span-7 min-w-0">
+            <div className="overflow-x-auto">
+              <CodeBlock filename="goroutine_example.go" language="go" code={SAMPLE} />
+            </div>
           </motion.div>
         </motion.div>
       </Container>
@@ -418,7 +422,7 @@ function CodeShowcase() {
 /* -------------------------------------------------- */
 function FinalCTA({ onLogin }: { onLogin: () => void }) {
   return (
-    <section className="py-24 md:py-32" style={{ borderTop: '1px solid var(--gp-border)' }}>
+    <section className="py-16 sm:py-24 md:py-32" style={{ borderTop: '1px solid var(--gp-border)' }}>
       <Container>
         <motion.div
           initial="hidden"
@@ -428,13 +432,13 @@ function FinalCTA({ onLogin }: { onLogin: () => void }) {
           className="max-w-[720px]"
         >
           <Eyebrow>Готов?</Eyebrow>
-          <h2 className="gp-display mt-4" style={{ fontSize: 'clamp(32px, 4.4vw, 56px)' }}>
+          <h2 className="gp-display mt-4" style={{ fontSize: 'clamp(26px, 4.4vw, 56px)' }}>
             Один <em>клик</em> до первого урока.
           </h2>
-          <p className="mt-4 text-[15px] max-w-[48ch]" style={{ color: 'var(--gp-ink-3)' }}>
+          <p className="mt-4 text-[14px] sm:text-[15px] max-w-[48ch]" style={{ color: 'var(--gp-ink-3)' }}>
             Войди через Google — и продолжишь ровно с того места, где остановишься. Никакой регистрации, никаких форм.
           </p>
-          <div className="mt-8">
+          <div className="mt-7 sm:mt-8">
             <Button size="lg" variant="primary" onClick={onLogin} iconRight={<ArrowRight size={15} />}>
               Войти и начать
             </Button>
@@ -450,16 +454,16 @@ function FinalCTA({ onLogin }: { onLogin: () => void }) {
 /* -------------------------------------------------- */
 function FooterMark() {
   return (
-    <footer style={{ borderTop: '1px solid var(--gp-border)' }} className="py-10">
-      <Container className="flex flex-wrap items-center justify-between gap-6">
-        <div className="flex items-center gap-2">
+    <footer style={{ borderTop: '1px solid var(--gp-border)' }} className="py-8 sm:py-10">
+      <Container className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-4 sm:gap-6">
+        <div className="flex items-center gap-2 flex-wrap">
           <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: 'var(--gp-accent)' }} />
           <span className="text-[13px] font-medium" style={{ color: 'var(--gp-ink-2)' }}>Go Path</span>
-          <span className="text-[12px] ml-2" style={{ color: 'var(--gp-ink-4)' }}>
+          <span className="text-[12px] sm:ml-2" style={{ color: 'var(--gp-ink-4)' }}>
             © 2026 · Интерактивная платформа изучения Go
           </span>
         </div>
-        <nav className="flex items-center gap-6">
+        <nav className="flex items-center gap-4 sm:gap-6 flex-wrap">
           {PATH.map((p) => (
             <Link key={p.to} to={p.to} className="text-[13px] no-underline transition-colors hover:underline underline-offset-4" style={{ color: 'var(--gp-ink-3)' }}>
               {p.title}

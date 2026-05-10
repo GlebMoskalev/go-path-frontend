@@ -38,9 +38,9 @@ export function TheoryPage() {
   return (
     <div className="min-h-[calc(100vh-60px)]" style={{ background: 'var(--gp-bg)' }}>
       {/* Page header */}
-      <header className="pt-14 pb-10" style={{ borderBottom: '1px solid var(--gp-border)' }}>
+      <header className="pt-10 sm:pt-14 pb-8 sm:pb-10" style={{ borderBottom: '1px solid var(--gp-border)' }}>
         <Container>
-          <motion.div initial="hidden" animate="visible" variants={staggerParent(0.06)} className="grid md:grid-cols-12 gap-10 items-end">
+          <motion.div initial="hidden" animate="visible" variants={staggerParent(0.06)} className="grid md:grid-cols-12 gap-8 md:gap-10 items-end">
             <div className="md:col-span-7">
               <motion.div variants={staggerChild}>
                 <Eyebrow>Раздел · 01</Eyebrow>
@@ -48,20 +48,20 @@ export function TheoryPage() {
               <motion.h1
                 variants={staggerChild}
                 className="gp-display mt-4"
-                style={{ fontSize: 'clamp(36px, 5vw, 60px)' }}
+                style={{ fontSize: 'clamp(28px, 5vw, 60px)' }}
               >
                 <em>Теория</em> Go,
                 <br />
                 от основ до конкурентности.
               </motion.h1>
-              <motion.p variants={staggerChild} className="mt-5 max-w-[58ch] text-[16px]" style={{ color: 'var(--gp-ink-3)' }}>
+              <motion.p variants={staggerChild} className="mt-4 sm:mt-5 max-w-[58ch] text-[14px] sm:text-[16px]" style={{ color: 'var(--gp-ink-3)' }}>
                 Уроки выстроены последовательно. Читай по порядку или открывай интересующее — каждый урок самодостаточен и оставляет за собой пометку «прочитано».
               </motion.p>
             </div>
 
             {/* Stats column */}
             <motion.div variants={staggerChild} className="md:col-span-5">
-              <div className="gp-card p-6">
+              <div className="gp-card p-5 sm:p-6">
                 <div className="flex items-center justify-between mb-5">
                   <Eyebrow marker={false}>Прогресс</Eyebrow>
                   <span className="text-[12px] gp-mono" style={{ color: 'var(--gp-ink-3)' }}>
@@ -107,11 +107,11 @@ export function TheoryPage() {
       </header>
 
       {/* Chapters as table of contents */}
-      <Container className="py-12">
+      <Container className="py-8 sm:py-12">
         {isLoading ? (
           <ChapterIndexSkeleton />
         ) : (
-          <motion.div initial="hidden" animate="visible" variants={staggerParent(0.06)} className="grid gap-12">
+          <motion.div initial="hidden" animate="visible" variants={staggerParent(0.06)} className="grid gap-10 sm:gap-12">
             {chapters.map((chapter, idx) => (
               <ChapterSection key={chapter.slug} chapter={chapter} idx={idx + 1} />
             ))}
@@ -130,7 +130,7 @@ function ChapterSection({ chapter, idx }: { chapter: TheoryChapter; idx: number 
   const done = ratio === 1;
 
   return (
-    <motion.section variants={staggerChild} className="grid md:grid-cols-12 gap-8 md:gap-10">
+    <motion.section variants={staggerChild} className="grid md:grid-cols-12 gap-6 md:gap-10">
       {/* Chapter meta column */}
       <div className="md:col-span-4">
         <div className="md:sticky md:top-[88px]">
@@ -169,11 +169,11 @@ function ChapterSection({ chapter, idx }: { chapter: TheoryChapter; idx: number 
           <li key={lesson.slug} style={{ borderBottom: '1px solid var(--gp-border)' }}>
             <Link
               to={`/theory/${chapter.slug}/${lesson.slug}`}
-              className="group flex items-center gap-4 py-4 no-underline"
+              className="group flex items-center gap-3 sm:gap-4 py-3.5 sm:py-4 no-underline"
               style={{ color: 'var(--gp-ink)' }}
             >
               <span
-                className="text-[11px] gp-mono w-7 flex-shrink-0"
+                className="text-[11px] gp-mono w-6 sm:w-7 flex-shrink-0"
                 style={{ color: 'var(--gp-ink-4)' }}
               >
                 {String(i + 1).padStart(2, '0')}
@@ -194,17 +194,17 @@ function ChapterSection({ chapter, idx }: { chapter: TheoryChapter; idx: number 
                 )}
               </span>
               <span className="flex-1 min-w-0">
-                <span className="block text-[15.5px] font-medium leading-snug truncate group-hover:underline underline-offset-4" style={{ letterSpacing: '-0.005em' }}>
+                <span className="block text-[14.5px] sm:text-[15.5px] font-medium leading-snug truncate group-hover:underline underline-offset-4" style={{ letterSpacing: '-0.005em' }}>
                   {lesson.title}
                 </span>
-                <span className="block text-[13px] mt-0.5 truncate" style={{ color: 'var(--gp-ink-3)' }}>
+                <span className="block text-[12.5px] sm:text-[13px] mt-0.5 truncate" style={{ color: 'var(--gp-ink-3)' }}>
                   {lesson.description}
                 </span>
               </span>
               <ArrowUpRight
                 size={14}
                 style={{ color: 'var(--gp-ink-4)' }}
-                className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                className="hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
               />
             </Link>
           </li>

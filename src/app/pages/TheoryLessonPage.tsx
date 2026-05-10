@@ -174,14 +174,14 @@ export function TheoryLessonPage() {
         }}
       >
         <Container className="h-12 flex items-center justify-between gap-3">
-          {/* Breadcrumb */}
+          {/* Breadcrumb — на мобильных только текущий урок */}
           <div className="flex items-center gap-2 min-w-0 text-[12.5px]">
             <Link to="/theory" className="no-underline hover:underline underline-offset-4 flex-shrink-0" style={{ color: 'var(--gp-ink-3)' }}>
               Теория
             </Link>
-            <ChevronRight size={12} style={{ color: 'var(--gp-ink-4)' }} />
-            <span className="truncate" style={{ color: 'var(--gp-ink-3)' }}>{lesson.chapter_title}</span>
-            <ChevronRight size={12} style={{ color: 'var(--gp-ink-4)' }} />
+            <ChevronRight size={12} style={{ color: 'var(--gp-ink-4)' }} className="flex-shrink-0" />
+            <span className="hidden sm:inline truncate" style={{ color: 'var(--gp-ink-3)' }}>{lesson.chapter_title}</span>
+            <ChevronRight size={12} style={{ color: 'var(--gp-ink-4)' }} className="hidden sm:inline-block flex-shrink-0" />
             <span className="truncate font-medium" style={{ color: 'var(--gp-ink)' }}>{lesson.title}</span>
           </div>
 
@@ -191,6 +191,7 @@ export function TheoryLessonPage() {
               title={focusMode ? 'Выйти из режима чтения' : 'Режим чтения'}
               icon={focusMode ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
               active={focusMode}
+              className="hidden sm:inline-flex"
             />
             <ToolbarButton
               onClick={() => setTocOpen(true)}
@@ -203,7 +204,7 @@ export function TheoryLessonPage() {
 
       {/* Layout */}
       <div className="relative">
-        <Container className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 pt-10 pb-24">
+        <Container className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 pt-6 sm:pt-10 pb-16 sm:pb-24">
           {/* Mini rail on xl+ when not in focus mode */}
           <aside
             className={`hidden ${focusMode ? '' : 'xl:block xl:col-span-1'}`}
@@ -235,60 +236,62 @@ export function TheoryLessonPage() {
                   </span>
                 )}
               </div>
-              <h1 className="gp-display mt-4" style={{ fontSize: 'clamp(28px, 4vw, 44px)', lineHeight: 1.15 }}>
+              <h1 className="gp-display mt-4" style={{ fontSize: 'clamp(24px, 4vw, 44px)', lineHeight: 1.15 }}>
                 {lesson.title}
               </h1>
               {lesson.description && (
-                <p className="mt-4 text-[16px]" style={{ color: 'var(--gp-ink-3)', lineHeight: 1.6, maxWidth: '60ch' }}>
+                <p className="mt-3 sm:mt-4 text-[14px] sm:text-[16px]" style={{ color: 'var(--gp-ink-3)', lineHeight: 1.6, maxWidth: '60ch' }}>
                   {lesson.description}
                 </p>
               )}
-              <div className="gp-divider mt-8" />
+              <div className="gp-divider mt-6 sm:mt-8" />
             </div>
 
             {/* Content — reading-friendly typography */}
-            <div className={`gp-prose mt-10 ${focusMode ? 'mx-auto max-w-[680px]' : ''}`}>
+            <div className={`gp-prose mt-8 sm:mt-10 ${focusMode ? 'mx-auto max-w-[680px]' : ''}`}>
               <MarkdownRenderer content={lesson.content} />
             </div>
 
             {/* Foot — read confirmation + next */}
-            <div className={`mt-16 ${focusMode ? 'mx-auto max-w-[680px]' : ''}`}>
+            <div className={`mt-12 sm:mt-16 ${focusMode ? 'mx-auto max-w-[680px]' : ''}`}>
               {user && !isCompleted && (
                 <div
-                  className="rounded-xl p-5 flex items-start gap-4"
+                  className="rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-start gap-3 sm:gap-4"
                   style={{
                     background: 'var(--gp-surface)',
                     border: '1px solid var(--gp-border)',
                   }}
                 >
-                  <span
-                    className="inline-flex items-center justify-center w-9 h-9 rounded-md flex-shrink-0"
-                    style={{
-                      background: 'var(--gp-surface-muted)',
-                      color: 'var(--gp-ink-3)',
-                    }}
-                  >
-                    <Sparkles size={15} />
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[14.5px] font-medium" style={{ color: 'var(--gp-ink)' }}>
-                      Дочитал до конца?
+                  <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0 w-full">
+                    <span
+                      className="inline-flex items-center justify-center w-9 h-9 rounded-md flex-shrink-0"
+                      style={{
+                        background: 'var(--gp-surface-muted)',
+                        color: 'var(--gp-ink-3)',
+                      }}
+                    >
+                      <Sparkles size={15} />
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[14.5px] font-medium" style={{ color: 'var(--gp-ink)' }}>
+                        Дочитал до конца?
+                      </div>
+                      <div className="text-[13px] mt-0.5" style={{ color: 'var(--gp-ink-3)' }}>
+                        Отметь его, чтобы прогресс по разделу обновился.
+                      </div>
+                      {completeError && (
+                        <div className="mt-2 text-[12.5px]" style={{ color: 'var(--gp-danger)' }}>{completeError}</div>
+                      )}
                     </div>
-                    <div className="text-[13px] mt-0.5" style={{ color: 'var(--gp-ink-3)' }}>
-                      Отметь его, чтобы прогресс по разделу обновился.
-                    </div>
-                    {completeError && (
-                      <div className="mt-2 text-[12.5px]" style={{ color: 'var(--gp-danger)' }}>{completeError}</div>
-                    )}
                   </div>
-                  <Button onClick={handleComplete} loading={isCompleting} variant="primary" size="sm">
+                  <Button onClick={handleComplete} loading={isCompleting} variant="primary" size="sm" className="w-full sm:w-auto">
                     Отметить
                   </Button>
                 </div>
               )}
 
               {/* Prev / next */}
-              <div className="grid sm:grid-cols-2 gap-3 mt-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5 sm:mt-6">
                 <NavCard item={nav.prev} direction="prev" fallback={{ href: '/theory', label: 'К списку', title: 'Все разделы' }} />
                 <NavCard item={nav.next} direction="next" />
               </div>
@@ -343,14 +346,14 @@ export function TheoryLessonPage() {
 }
 
 function ToolbarButton({
-  onClick, title, icon, active,
-}: { onClick: () => void; title: string; icon: React.ReactNode; active?: boolean }) {
+  onClick, title, icon, active, className,
+}: { onClick: () => void; title: string; icon: React.ReactNode; active?: boolean; className?: string }) {
   return (
     <button
       onClick={onClick}
       title={title}
       aria-label={title}
-      className="w-8 h-8 inline-flex items-center justify-center rounded-md transition-colors"
+      className={`w-8 h-8 inline-flex items-center justify-center rounded-md transition-colors ${className ?? ''}`}
       style={{
         background: active ? 'var(--gp-surface-muted)' : 'transparent',
         color: active ? 'var(--gp-ink)' : 'var(--gp-ink-3)',
