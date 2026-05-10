@@ -384,6 +384,7 @@ function QuizPhase({
   onNext: () => void;
 }) {
   const actionBarRef = useRef<HTMLDivElement>(null);
+  const questionTopRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll explanation + "Continue" button into view after answering
   useEffect(() => {
@@ -396,6 +397,19 @@ function QuizPhase({
     }, 60);
     return () => clearTimeout(t);
   }, [selectedAnswer, result]);
+
+  // Scroll back to the top of the question when moving to a new question
+  // Sticky header (60) + sticky progress bar (48) = 108px offset
+  useEffect(() => {
+    const STICKY_OFFSET = 108;
+    const el = questionTopRef.current;
+    if (el) {
+      const top = el.getBoundingClientRect().top + window.scrollY - STICKY_OFFSET - 12;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [index]);
 
   return (
     <div className="min-h-[calc(100vh-60px)]" style={{ background: 'var(--gp-bg)' }}>
@@ -432,6 +446,7 @@ function QuizPhase({
       </div>
 
       <Container className="pt-8 sm:pt-12 pb-16 sm:pb-24 max-w-[760px]">
+        <div ref={questionTopRef} aria-hidden style={{ scrollMarginTop: 120 }} />
         <AnimatePresence mode="wait">
           <motion.div
             key={index}
