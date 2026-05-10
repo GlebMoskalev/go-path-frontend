@@ -130,8 +130,7 @@ function MarketingHero({ onLogin }: { onLogin: () => void }) {
             className="mt-5 sm:mt-7 max-w-[58ch] text-[15px] sm:text-[17px] md:text-[18px]"
             style={{ color: 'var(--gp-ink-2)', lineHeight: 1.55 }}
           >
-            Обучение Go в одном месте — теория, задачи, квизы и проекты. Без шумной геймификации:
-            спокойная типографика, продуманные шаги, обратная связь, которой можно доверять.
+            Теория, задачи, квизы и проекты — всё для изучения Go в одном месте. Без отвлечений, с акцентом на понимание.
           </motion.p>
 
           <motion.div variants={staggerChild} className="mt-8 sm:mt-10 flex flex-wrap items-center gap-3">
@@ -203,7 +202,7 @@ function DashboardHero() {
           </motion.h1>
 
           <motion.p variants={staggerChild} className="mt-4 max-w-[62ch] text-[15px] sm:text-[16px]" style={{ color: 'var(--gp-ink-3)' }}>
-            Маленькие шаги — большой прогресс. Возьми сегодня по уроку из каждого раздела.
+            Занимайся в своём темпе. Хотя бы один урок сегодня — уже движение вперёд.
           </motion.p>
 
           <motion.div variants={staggerChild} className="mt-8 sm:mt-12 grid gap-4 md:grid-cols-12">

@@ -36,19 +36,19 @@ export function TheoryPage() {
   }, [chapters]);
 
   return (
-    <div className="min-h-[calc(100vh-60px)]" style={{ background: 'var(--gp-bg)' }}>
+    <div className="min-h-[calc(100vh-60px)] overflow-x-hidden" style={{ background: 'var(--gp-bg)' }}>
       {/* Page header */}
       <header className="pt-10 sm:pt-14 pb-8 sm:pb-10" style={{ borderBottom: '1px solid var(--gp-border)' }}>
         <Container>
           <motion.div initial="hidden" animate="visible" variants={staggerParent(0.06)} className="grid md:grid-cols-12 gap-8 md:gap-10 items-end">
-            <div className="md:col-span-7">
+            <div className="md:col-span-7 min-w-0">
               <motion.div variants={staggerChild}>
                 <Eyebrow>Раздел · 01</Eyebrow>
               </motion.div>
               <motion.h1
                 variants={staggerChild}
-                className="gp-display mt-4"
-                style={{ fontSize: 'clamp(28px, 5vw, 60px)' }}
+                className="gp-display mt-4 break-words"
+                style={{ fontSize: 'clamp(26px, 5vw, 60px)' }}
               >
                 <em>Теория</em> Go,
                 <br />
@@ -86,10 +86,10 @@ export function TheoryPage() {
                       <span className="block text-[11px]" style={{ color: 'var(--gp-ink-4)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                         Продолжить с
                       </span>
-                      <span className="block text-[14px] font-medium truncate" style={{ color: 'var(--gp-ink)' }}>
+                      <span className="block text-[14px] font-medium break-words" style={{ color: 'var(--gp-ink)' }}>
                         {continueAt.lesson.title}
                       </span>
-                      <span className="block text-[12px] truncate" style={{ color: 'var(--gp-ink-3)' }}>
+                      <span className="block text-[12px] break-words" style={{ color: 'var(--gp-ink-3)' }}>
                         {continueAt.chapter.title}
                       </span>
                     </span>
@@ -164,21 +164,21 @@ function ChapterSection({ chapter, idx }: { chapter: TheoryChapter; idx: number 
       </div>
 
       {/* Lesson list */}
-      <ol className="md:col-span-8 list-none p-0 m-0" style={{ borderTop: '1px solid var(--gp-border)' }}>
+      <ol className="md:col-span-8 min-w-0 list-none p-0 m-0" style={{ borderTop: '1px solid var(--gp-border)' }}>
         {chapter.lessons.map((lesson, i) => (
           <li key={lesson.slug} style={{ borderBottom: '1px solid var(--gp-border)' }}>
             <Link
               to={`/theory/${chapter.slug}/${lesson.slug}`}
-              className="group flex items-center gap-3 sm:gap-4 py-3.5 sm:py-4 no-underline"
+              className="group flex items-start sm:items-center gap-3 sm:gap-4 py-3.5 sm:py-4 no-underline"
               style={{ color: 'var(--gp-ink)' }}
             >
               <span
-                className="text-[11px] gp-mono w-6 sm:w-7 flex-shrink-0"
+                className="text-[11px] gp-mono w-6 sm:w-7 flex-shrink-0 mt-0.5 sm:mt-0"
                 style={{ color: 'var(--gp-ink-4)' }}
               >
                 {String(i + 1).padStart(2, '0')}
               </span>
-              <span className="flex-shrink-0">
+              <span className="flex-shrink-0 mt-0.5 sm:mt-0">
                 {lesson.completed ? (
                   <span
                     className="inline-flex items-center justify-center w-5 h-5 rounded-full"
@@ -194,10 +194,28 @@ function ChapterSection({ chapter, idx }: { chapter: TheoryChapter; idx: number 
                 )}
               </span>
               <span className="flex-1 min-w-0">
-                <span className="block text-[14.5px] sm:text-[15.5px] font-medium leading-snug truncate group-hover:underline underline-offset-4" style={{ letterSpacing: '-0.005em' }}>
+                <span
+                  className="text-[14.5px] sm:text-[15.5px] font-medium leading-snug group-hover:underline underline-offset-4 break-words"
+                  style={{
+                    letterSpacing: '-0.005em',
+                    display: '-webkit-box',
+                    WebkitBoxOrient: 'vertical',
+                    WebkitLineClamp: 2,
+                    overflow: 'hidden',
+                  }}
+                >
                   {lesson.title}
                 </span>
-                <span className="block text-[12.5px] sm:text-[13px] mt-0.5 truncate" style={{ color: 'var(--gp-ink-3)' }}>
+                <span
+                  className="text-[12.5px] sm:text-[13px] mt-0.5 break-words"
+                  style={{
+                    color: 'var(--gp-ink-3)',
+                    display: '-webkit-box',
+                    WebkitBoxOrient: 'vertical',
+                    WebkitLineClamp: 2,
+                    overflow: 'hidden',
+                  }}
+                >
                   {lesson.description}
                 </span>
               </span>
